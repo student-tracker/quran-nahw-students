@@ -6,7 +6,7 @@
 
 /* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  WEB_APP_URL: "https://script.google.com/macros/s/AKfycby0oMaYQi6Hy_LvD-fZcY9fxUEEgloCrsv8CX4svRfhlvQCU2Q6IL3kGWswNrGhohJyNQ/exec",
+  WEB_APP_URL: "https://script.google.com/macros/s/AKfycbysU1eTb3pL-Pg3tY8oIl5udm8hYTIwjbCSM29GHLjaZHCG_5lMmUNbUH8iM42kKpoU/exec",
   CLASS_CODE: "student95",
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
   HISTORY_DAYS: 14,
