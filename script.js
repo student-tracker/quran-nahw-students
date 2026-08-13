@@ -1,28 +1,16 @@
 /* =========================================================================
    رفقاء القرآن والنحو — script.js
-   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية،
-   الكونفيتي، الرسم البياني، وتصدير CSV.
+   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية الإنمي،
+   تأكيد المهام وقفل التكرار اليومي، لوحة تحكم المعلم وتصدير CSV.
    ========================================================================= */
 
-/* ================== 1) الإعدادات (يجب تعديلها من طرفك) ================== */
+/* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  // رابط تطبيق الويب (Web App) الذي ستحصل عليه بعد نشر Code.gs
   WEB_APP_URL: "https://script.google.com/macros/s/AKfycby0oMaYQi6Hy_LvD-fZcY9fxUEEgloCrsv8CX4svRfhlvQCU2Q6IL3kGWswNrGhohJyNQ/exec",
-
-  // "رمز الصف" - تخفيف بسيط جدًا وليس حماية حقيقية.
-  // سيكون ظاهرًا لأي شخص يفتح كود الموقع على GitHub.
   CLASS_CODE: "student95",
-
-  // تجزئة (SHA-256) لكلمة مرور الأستاذ - وليست كلمة المرور نفسها.
-  // هذه أيضًا حماية شكلية فقط (client-side) وليست حماية حقيقية،
-  // لأن أي شخص يمكنه قراءة كود JS ومحاولة كسر التجزئة نظريًا.
-  // لتوليد تجزئة كلمة مرورك: افتح Console بالمتصفح ونفّذ:
-  //   await sha256Hex("كلمة_المرور_التي_تريدها")
-  // (الدالة sha256Hex معرّفة أسفل هذا الملف)
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
-
-  HISTORY_DAYS: 14,          // عدد أيام تقويم النجوم
-  SYNC_RETRY_INTERVAL_MS: 20000, // محاولة مزامنة قائمة الانتظار كل 20 ثانية
+  HISTORY_DAYS: 14,
+  SYNC_RETRY_INTERVAL_MS: 20000,
 };
 
 const TASKS = [
@@ -32,9 +20,7 @@ const TASKS = [
 ];
 
 /* ================== 2) أدوات عامة ================== */
-
 function todayStr() {
-  // نستخدم صيغة yyyy-MM-dd محليًا (بدون اعتماد على منطقة زمنية للسيرفر)
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -56,11 +42,11 @@ async function sha256Hex(text) {
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
-// نعرّضها على window لتسهيل توليد التجزئة من الـ Console عند الإعداد
 window.sha256Hex = sha256Hex;
 
 function showToast(msg, ms = 2400) {
   const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(showToast._timer);
@@ -74,7 +60,6 @@ function setScreen(id) {
 }
 
 /* ================== 3) طبقة الاتصال بالشيت (GET/POST) ================== */
-
 async function apiGet(action, params = {}) {
   const url = new URL(CONFIG.WEB_APP_URL);
   url.searchParams.set("action", action);
@@ -87,7 +72,6 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(payload) {
-  // نستخدم text/plain لتفادي CORS Preflight مع Google Apps Script
   const res = await fetch(CONFIG.WEB_APP_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -100,16 +84,12 @@ async function apiPost(payload) {
 }
 
 /* ================== 4) قائمة الانتظار المحلية (Sync Queue) ================== */
-
 const QUEUE_KEY = "rq_sync_queue_v1";
-
 function readQueue() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
   catch { return []; }
 }
-function writeQueue(q) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-}
+function writeQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
 function enqueueUpdate(item) {
   const q = readQueue();
   q.push(item);
@@ -125,7 +105,7 @@ async function flushQueue() {
     try {
       await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...item });
     } catch (e) {
-      remaining.push(item); // نبقيها لمحاولة لاحقة
+      remaining.push(item);
     }
   }
   writeQueue(remaining);
@@ -133,32 +113,34 @@ async function flushQueue() {
     showToast("✅ تمت مزامنة إنجازك المحفوظ محليًا");
   }
 }
-
 window.addEventListener("online", flushQueue);
 setInterval(flushQueue, CONFIG.SYNC_RETRY_INTERVAL_MS);
 
-/* ================== 5) الشخصية الكرتونية (Mascot) ================== */
-
+/* ================== 5) الشخصية الكرتونية الإنمي (Mascot) ================== */
 const Mascot = {
-  el: null, pupilL: null, pupilR: null, mouth: null,
-  eyeLCenter: { x: 78, y: 90 }, eyeRCenter: { x: 122, y: 90 },
-  maxOffset: 4.2,
-
+  el: null, pupilL: null, pupilR: null,
+  eyesNeutral: null, eyesHappy: null,
+  mouthNeutral: null, mouthHappy: null,
+  speechBubble: null,
+  eyeLCenter: { x: 77, y: 92 }, eyeRCenter: { x: 127, y: 92 },
+  maxOffset: 4,
+  
   init() {
     this.el = document.getElementById("mascotSvg");
     this.pupilL = document.getElementById("pupilL");
     this.pupilR = document.getElementById("pupilR");
-    this.mouth = document.getElementById("mascotMouth");
+    this.eyesNeutral = document.getElementById("eyesNeutral");
+    this.eyesHappy = document.getElementById("eyesHappy");
+    this.mouthNeutral = document.getElementById("mouthNeutral");
+    this.mouthHappy = document.getElementById("mouthHappy");
+    this.speechBubble = document.getElementById("speechBubble");
   },
 
-  // يحرك بؤبؤ العين نحو نقطة (clientX/clientY) بشكل ديناميكي محسوب
   lookAt(clientX, clientY) {
-    if (!this.el) return;
+    if (!this.el || !this.pupilL || !this.pupilR) return;
     const rect = this.el.getBoundingClientRect();
-    // موقع المؤشر نسبيًا داخل الـ SVG (بمقياس viewBox 200x200)
     const relX = ((clientX - rect.left) / rect.width) * 200;
     const relY = ((clientY - rect.top) / rect.height) * 200;
-
     [ ["pupilL", this.eyeLCenter], ["pupilR", this.eyeRCenter] ].forEach(([key, center]) => {
       const dx = relX - center.x;
       const dy = relY - center.y;
@@ -171,34 +153,38 @@ const Mascot = {
   },
 
   resetLook() {
-    this.pupilL.setAttribute("transform", "translate(0,0)");
-    this.pupilR.setAttribute("transform", "translate(0,0)");
+    if (this.pupilL) this.pupilL.setAttribute("transform", "translate(0,0)");
+    if (this.pupilR) this.pupilR.setAttribute("transform", "translate(0,0)");
   },
 
-  happy() {
-    this.mouth.setAttribute("d", "M82 110 Q100 128 118 110 Q100 120 82 110 Z");
-    this.mouth.setAttribute("fill", "#1F3B4D");
-    this.el.classList.remove("mascot-happy-jump");
-    void this.el.offsetWidth; // إعادة تشغيل الأنيميشن
-    this.el.classList.add("mascot-happy-jump");
+  happy(studentName) {
+    if (this.eyesNeutral) this.eyesNeutral.classList.add("hidden-feature");
+    if (this.eyesHappy) this.eyesHappy.classList.remove("hidden-feature");
+    if (this.mouthNeutral) this.mouthNeutral.classList.add("hidden-feature");
+    if (this.mouthHappy) this.mouthHappy.classList.remove("hidden-feature");
+    if (this.speechBubble && studentName) {
+      this.speechBubble.textContent = `أهلاً بك يا ${studentName}! جاهز لإنجاز مهامك اليوم؟ اضغط ابدأ 🚀`;
+    }
   },
 
   confused() {
-    this.mouth.setAttribute("d", "M88 116 Q100 110 112 116");
-    this.mouth.setAttribute("fill", "none");
-    this.resetLook();
+    this.neutral();
+    if (this.speechBubble) this.speechBubble.textContent = "عذراً، حدث خطأ ما! تحقق من الاتصال بالحاسوب/الهاتف.";
   },
 
   neutral() {
-    this.mouth.setAttribute("d", "M85 112 Q100 122 115 112");
-    this.mouth.setAttribute("fill", "none");
-  },
+    if (this.eyesNeutral) this.eyesNeutral.classList.remove("hidden-feature");
+    if (this.eyesHappy) this.eyesHappy.classList.add("hidden-feature");
+    if (this.mouthNeutral) this.mouthNeutral.classList.remove("hidden-feature");
+    if (this.mouthHappy) this.mouthHappy.classList.add("hidden-feature");
+    if (this.speechBubble) this.speechBubble.textContent = "مرحباً بك! اختر اسمك لنبدأ رحلة الإنجاز اليومية ✨";
+  }
 };
 
 /* ================== 6) الكونفيتي ================== */
-
 function fireConfetti(count = 26) {
   const layer = document.getElementById("confettiLayer");
+  if (!layer) return;
   const colors = ["#4FB6E8", "#5FD3A3", "#FFC94A", "#FF9B6A", "#FF7A7A"];
   for (let i = 0; i < count; i++) {
     const c = document.createElement("div");
@@ -216,26 +202,28 @@ function fireConfetti(count = 26) {
 }
 
 /* ================== 7) حالة التطبيق ================== */
-
 const State = {
   student: null,
   today: { wird: false, tuhfa: false, irab: false },
-  history: [], // [{date, wird, tuhfa, irab}]
+  history: [],
   streak: 0,
+  isSubmittedToday: false // للتحقق من قفل اليوم
 };
-
 const STUDENT_KEY = "rq_selected_student_v1";
 
-/* ================== 8) تهيئة شاشة الترحيب ================== */
+function getLockStorageKey(name) {
+  return `rq_lock_${name}_${todayStr()}`;
+}
 
+/* ================== 8) تهيئة شاشة الترحيب وتوجيهات الجهاز ================== */
 async function initWelcomeScreen() {
   Mascot.init();
-
+  initDeviceInstructions();
+  
   const select = document.getElementById("studentSelect");
   const startBtn = document.getElementById("startBtn");
   const wrap = document.getElementById("selectWrap");
 
-  // تتبع بؤبؤ العين عند مرور المؤشر/اللمس فوق القائمة
   wrap.addEventListener("mousemove", (e) => Mascot.lookAt(e.clientX, e.clientY));
   wrap.addEventListener("mouseleave", () => Mascot.resetLook());
   wrap.addEventListener("touchstart", (e) => {
@@ -247,10 +235,11 @@ async function initWelcomeScreen() {
     if (select.value) {
       startBtn.disabled = false;
       startBtn.classList.add("active");
-      Mascot.happy();
+      Mascot.happy(select.value);
     } else {
       startBtn.disabled = true;
       startBtn.classList.remove("active");
+      Mascot.neutral();
     }
   });
 
@@ -264,6 +253,7 @@ async function initWelcomeScreen() {
   document.getElementById("changeStudentBtn")?.addEventListener("click", () => {
     localStorage.removeItem(STUDENT_KEY);
     State.student = null;
+    Mascot.neutral();
     setScreen("screen-welcome");
   });
 
@@ -271,12 +261,29 @@ async function initWelcomeScreen() {
     btn.addEventListener("click", loadNamesList);
   });
 
+  document.getElementById("closeSuccessModalBtn")?.addEventListener("click", () => {
+    document.getElementById("successModal").classList.add("hidden");
+  });
+
   await loadNamesList();
 
-  // إن كان هناك تلميذ محفوظ مسبقًا في هذا الجهاز، ندخل مباشرة لصفحة مهامه
   const savedStudent = localStorage.getItem(STUDENT_KEY);
   if (savedStudent) {
     enterStudentFlow(savedStudent);
+  }
+}
+
+function initDeviceInstructions() {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                || window.innerWidth <= 768;
+  const desk = document.getElementById("instructionsDesktop");
+  const mob = document.getElementById("instructionsMobile");
+  if (isMobile) {
+    if (desk) desk.classList.add("hidden-feature");
+    if (mob) mob.classList.remove("hidden-feature");
+  } else {
+    if (desk) desk.classList.remove("hidden-feature");
+    if (mob) mob.classList.add("hidden-feature");
   }
 }
 
@@ -297,13 +304,8 @@ async function loadNamesList() {
     select.disabled = false;
     setScreen("screen-welcome");
   } catch (err) {
-    if (!navigator.onLine || (err && err.offline)) {
-      setScreen("screen-error-offline");
-    } else {
-      setScreen("screen-error-offline"); // فشل الاتصال بالشيت نعامله كخطأ اتصال أيضًا
-    }
-    Mascot.init();
-    Mascot.confused && Mascot.confused();
+    setScreen("screen-error-offline");
+    Mascot.confused();
   }
 }
 
@@ -314,24 +316,31 @@ function escapeHtml(s) {
 }
 
 /* ================== 9) شاشة المهام اليومية ================== */
-
 async function enterStudentFlow(name) {
   State.student = name;
   setScreen("screen-loading");
   document.getElementById("studentHello").textContent = `أهلاً يا ${name} 🌟`;
 
+  // التحقق مما إذا كان الطالب قد أرسل مهامه سابقاً اليوم
+  const isLockedLocally = localStorage.getItem(getLockStorageKey(name)) === "true";
+
   try {
     await Promise.all([loadTodayState(), loadHistoryState()]);
+    
+    // إذا ثبت التسجيل إما محلياً أو من الشيت
+    const hasAnyDone = State.today.wird || State.today.tuhfa || State.today.irab;
+    State.isSubmittedToday = isLockedLocally || hasAnyDone;
+
     renderTasksScreen();
     setScreen("screen-tasks");
     bindTaskCards();
     await flushQueue();
   } catch (err) {
-    // في حال تعذّر الجلب، نحاول الاعتماد على أي نسخة محلية محفوظة كحد أدنى
     const cachedToday = getLocalTodayCache(name);
     if (cachedToday) {
       State.today = cachedToday;
       State.history = [];
+      State.isSubmittedToday = isLockedLocally;
       renderTasksScreen();
       setScreen("screen-tasks");
       bindTaskCards();
@@ -368,7 +377,6 @@ async function loadHistoryState() {
 }
 
 function computeStreak() {
-  // نحسب أيام متتالية (بما فيها اليوم) أُنجزت فيها كل المهام الثلاث
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
   const todayAll = State.today.wird && State.today.tuhfa && State.today.irab;
@@ -387,12 +395,32 @@ function computeStreak() {
 
 function renderTasksScreen() {
   document.getElementById("streakCount").textContent = State.streak;
+  
+  const confirmBtn = document.getElementById("confirmTasksBtn");
+  const alreadyBanner = document.getElementById("alreadySubmittedBanner");
+
+  if (State.isSubmittedToday) {
+    if (alreadyBanner) alreadyBanner.classList.remove("hidden");
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.style.display = "none";
+    }
+  } else {
+    if (alreadyBanner) alreadyBanner.classList.add("hidden");
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.style.display = "block";
+    }
+  }
 
   TASKS.forEach(t => {
     const card = document.querySelector(`.task-card[data-task="${t.key}"]`);
+    if (!card) return;
     const check = card.querySelector("[data-check]");
     const done = !!State.today[t.key];
+    
     card.classList.toggle("done", done);
+    card.classList.toggle("disabled-card", State.isSubmittedToday);
     check.classList.toggle("checked", done);
     check.textContent = done ? "✓" : "";
   });
@@ -402,22 +430,18 @@ function renderTasksScreen() {
     dot.classList.toggle("done", i < doneCount);
   });
 
-  document.getElementById("celebrateAllMsg").classList.toggle("hidden", doneCount < 3);
-
   renderStarCalendar();
 }
 
 function renderStarCalendar() {
   const wrap = document.getElementById("starCalendar");
+  if (!wrap) return;
   wrap.innerHTML = "";
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
-
   const days = [];
   for (let i = CONFIG.HISTORY_DAYS - 1; i >= 0; i--) days.push(dateStrDaysAgo(i));
-
   const weekdayFmt = new Intl.DateTimeFormat("ar", { weekday: "short" });
-
   days.forEach(ds => {
     const isToday = ds === todayStr();
     const rec = isToday ? State.today : map[ds];
@@ -435,61 +459,72 @@ function renderStarCalendar() {
   });
 }
 
+// التحديد المحلي فقط (بدون تسجيل تلقائي بالسيرفر)
 function bindTaskCards() {
   document.querySelectorAll(".task-card").forEach(card => {
     const key = card.dataset.task;
-    const check = card.querySelector("[data-check]");
-    // نزيل أي مستمعين سابقين عبر استنساخ العنصر (لتفادي تكرار الربط عند إعادة الدخول)
-    const newCheck = check.cloneNode(true);
-    check.replaceWith(newCheck);
-    newCheck.addEventListener("click", () => onToggleTask(key, card, newCheck));
+    const newCard = card.cloneNode(true);
+    card.replaceWith(newCard);
+
+    newCard.addEventListener("click", () => {
+      if (State.isSubmittedToday) return; // منع التغيير في حال القفل
+      
+      State.today[key] = !State.today[key];
+      setLocalTodayCache(State.student, State.today);
+      renderTasksScreen();
+    });
   });
+
+  const confirmBtn = document.getElementById("confirmTasksBtn");
+  if (confirmBtn) {
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.replaceWith(newConfirmBtn);
+    newConfirmBtn.addEventListener("click", onConfirmAndSubmitAll);
+  }
 }
 
-async function onToggleTask(key, card, checkEl) {
-  const newValue = !State.today[key];
-  State.today[key] = newValue;
-  setLocalTodayCache(State.student, State.today);
+// التنسيق النهائي والحفظ الفعلي عند الضغط على زر "تأكيد وحفظ المهام"
+async function onConfirmAndSubmitAll() {
+  if (State.isSubmittedToday) return;
+
+  State.isSubmittedToday = true;
+  localStorage.setItem(getLockStorageKey(State.student), "true");
+  
   computeStreak();
   renderTasksScreen();
 
-  if (newValue) {
-    fireConfetti(TASKS.every(t => State.today[t.key]) ? 60 : 24);
-    if (TASKS.every(t => State.today[t.key])) {
-      showToast("🎉 ما شاء الله! أنجزت كل مهامك اليوم");
-    } else {
-      showToast("✅ أحسنت! تم تسجيل الإنجاز");
+  const allCompleted = TASKS.every(t => State.today[t.key]);
+  fireConfetti(allCompleted ? 60 : 30);
+
+  // إرسال كتل المهام للـ Server / Google Apps Script
+  for (const t of TASKS) {
+    const payload = {
+      studentName: State.student,
+      task: t.key,
+      completed: !!State.today[t.key],
+      clientTimestamp: new Date().toISOString(),
+    };
+
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...payload });
+    } catch (e) {
+      enqueueUpdate(payload);
     }
-  } else {
-    showToast("تم إلغاء التحديد");
   }
 
-  card.classList.add("saving");
-  const payload = {
-    studentName: State.student,
-    task: key,
-    completed: newValue,
-    clientTimestamp: new Date().toISOString(),
-  };
-
-  try {
-    if (!navigator.onLine) throw new Error("offline");
-    await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...payload });
-  } catch (e) {
-    // فشل الإرسال: نحفظ في قائمة الانتظار المحلية ونحاول لاحقًا
-    enqueueUpdate(payload);
-    showToast("💾 لا يوجد اتصال، تم الحفظ محليًا وسيتم إرساله تلقائيًا");
-  } finally {
-    card.classList.remove("saving");
+  // إظهار نافذة التهنئة المنبثقة
+  const successModal = document.getElementById("successModal");
+  if (successModal) {
+    successModal.classList.remove("hidden");
   }
 }
 
 /* ================== 10) واجهة الأستاذ ================== */
-
 const Teacher = {
   loggedIn: false,
-  records: [],   // كل السجلات من getRecords
-  students: [],  // كل الأسماء
+  records: [],
+  students: [],
   period: "today",
   sortKey: "name",
   sortDir: "asc",
@@ -524,6 +559,7 @@ function openTeacherLogin() {
   document.getElementById("teacherLoginError").textContent = "";
   document.getElementById("teacherPassInput").focus();
 }
+
 function closeTeacherLogin() {
   document.getElementById("teacherLoginModal").classList.add("hidden");
 }
@@ -560,7 +596,7 @@ function filteredRecordsForPeriod() {
   return Teacher.records.filter(r => {
     if (Teacher.period === "today") return r.date === today;
     if (Teacher.period === "week") return r.date >= weekAgo && r.date <= today;
-    return true; // all
+    return true;
   });
 }
 
@@ -579,7 +615,6 @@ function buildLeaderboardRows() {
     if (!row.lastDate || r.date > row.lastDate) row.lastDate = r.date;
   });
 
-  // آخر يوم أُنجزت فيه أي مهمة (من كل السجلات وليس فقط الفترة) لتحديد "لم ينجز منذ 3 أيام"
   const lastActiveAll = {};
   Teacher.records.forEach(r => {
     if (r.wird || r.tuhfa || r.irab) {
@@ -605,7 +640,6 @@ function buildLeaderboardRows() {
 
   const search = (document.getElementById("dashSearch").value || "").trim();
   const filtered = search ? rows.filter(r => r.name.includes(search)) : rows;
-
   filtered.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ar"));
   return filtered;
 }
@@ -656,7 +690,7 @@ function exportCsv() {
   rows.forEach(r => {
     lines.push([r.name, r.wird, r.tuhfa, r.irab, r.score].join(","));
   });
-  const csv = "\uFEFF" + lines.join("\n"); // BOM لدعم العربية في Excel
+  const csv = "\uFEFF" + lines.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -669,7 +703,6 @@ function exportCsv() {
 }
 
 /* ================== 11) بدء التشغيل ================== */
-
 document.addEventListener("DOMContentLoaded", () => {
   initWelcomeScreen();
   initTeacherUI();
