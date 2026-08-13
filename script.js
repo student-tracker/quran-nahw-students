@@ -361,6 +361,7 @@ async function enterStudentFlow(name) {
       State.history = [];
       State.isSubmittedToday = isLockedLocally || cachedToday.submitted === true ||
         cachedToday.wird || cachedToday.tuhfa || cachedToday.irab;
+      computeStreak(); // كانت مفقودة هنا، فتبقى السلسلة المتتالية 0 دائماً في وضع عدم الاتصال
       renderTasksScreen();
       setScreen("screen-tasks");
       bindTaskCards();
@@ -564,20 +565,10 @@ async function syncSubmissionInBackground() {
     }
   }
 
-  // إرسال علامة "تم التأكيد" لهذا اليوم — تُستخدم لمنع إعادة التسجيل من أي جهاز آخر
-  // حتى لو لم يُنجز الطالب أياً من المهام الثلاث.
-  const submittedPayload = {
-    studentName: State.student,
-    task: "submitted",
-    completed: true,
-    clientTimestamp: new Date().toISOString(),
-  };
-  try {
-    if (!navigator.onLine) throw new Error("offline");
-    await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...submittedPayload });
-  } catch (e) {
-    enqueueUpdate(submittedPayload);
-  }
+  // ملاحظة: تم إلغاء إرسال حقل "submitted" الإضافي (كان تجريبياً) لأنه على الأرجح
+  // غير معروف لدى الخادم الحالي (Google Apps Script) وقد يتسبب في إفساد/إزاحة
+  // أعمدة المهام الحقيقية (wird/tuhfa/irab) عند الكتابة في عمود غير موجود.
+  // القفل بين الأجهزة يعتمد الآن فقط على: أي مهمة true في بيانات الخادم + القفل المحلي.
 }
 
 /* ================== 10) واجهة الأستاذ ================== */
