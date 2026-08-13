@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>رفقاء القرآن والنحو</title>
+<meta name="description" content="نظام تتبع تفاعلي للمهام اليومية: حفظ الورد، تحفة الأطفال، وإعراب الآجرومية">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#4FB6E8;
+    --sky-dark:#2C86B8;
+    --sky-pale:#E6F6FC;
+    --green:#5FD3A3;
+    --green-dark:#2E9E76;
+    --yellow:#FFC94A;
+    --orange:#FF9B6A;
+    --coral:#FF7A7A;
+    --ink:#1F3B4D;
+    --ink-soft:#5A7488;
+    --bg:#F3FBFD;
+    --card:#FFFFFF;
+    --shadow: 0 10px 25px -8px rgba(31,59,77,.18);
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --font-display:'Cairo',sans-serif;
+    --font-body:'Tajawal',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 8% 12%, rgba(95,211,163,.18), transparent 40%),
+      radial-gradient(circle at 92% 18%, rgba(79,182,232,.20), transparent 45%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.brand-title{font-family:var(--font-display);}
+  button{font-family:var(--font-body);cursor:pointer;}
+  .hidden{display:none !important;}
+  a{color:inherit;}
+
+  /* ===== Topbar ===== */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    max-width:980px;
+    margin:0 auto;
+  }
+  .teacher-btn{
+    background:var(--card);
+    border:2px solid var(--sky-pale);
+    color:var(--sky-dark);
+    font-weight:700;
+    font-size:.9rem;
+    padding:10px 16px;
+    border-radius:999px;
+    box-shadow:var(--shadow);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .teacher-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px -10px rgba(31,59,77,.25);}
+  .brand{text-align:left;}
+  .brand-title{font-size:1.25rem;font-weight:800;color:var(--ink);}
+  .brand-sub{display:block;font-size:.8rem;color:var(--ink-soft);margin-top:2px;}
+
+  main{max-width:640px;margin:0 auto;padding:10px 20px 60px;}
+
+  /* ===== Screens ===== */
+  .screen{animation:fadeIn .4s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ===== Welcome screen ===== */
+  .welcome-card{
+    background:var(--card);
+    border-radius:var(--radius-lg);
+    padding:34px 26px 30px;
+    box-shadow:var(--shadow);
+    text-align:center;
+    margin-top:10px;
+  }
+  .welcome-hello{font-size:1.4rem;font-weight:800;margin:6px 0 18px;}
+  .mascot-wrap{width:170px;margin:0 auto 14px;}
+
+  /* dropdown */
+  .field-label{display:block;font-weight:700;color:var(--ink-soft);margin-bottom:8px;font-size:.9rem;}
+  .select-wrap{position:relative;margin-bottom:22px;}
+  select#studentSelect{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    width:100%;
+    padding:16px 46px 16px 18px;
+    font-size:1.05rem;
+    font-family:var(--font-body);
+    font-weight:700;
+    color:var(--ink);
+    background:var(--sky-pale);
+    border:3px solid transparent;
+    border-radius:var(--radius-md);
+    outline:none;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  select#studentSelect:focus{border-color:var(--sky);background:#fff;}
+  select#studentSelect:disabled{opacity:.6;}
+  .select-wrap::after{
+    content:"▾";
+    position:absolute;left:18px;top:50%;transform:translateY(-50%);
+    color:var(--sky-dark);font-size:1.1rem;pointer-events:none;
+  }
+  .select-wrap.dir-ltr::after{content:none;}
+
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:8px;justify-content:center;
+    width:100%;
+    padding:16px 20px;
+    font-size:1.1rem;font-weight:800;
+    color:#fff;
+    background:#c9d3d8;
+    border:none;border-radius:999px;
+    transition:transform .15s ease, box-shadow .2s ease, background .3s ease;
+    box-shadow:none;
+  }
+  .btn-primary.active{
+    background:linear-gradient(135deg,var(--green),var(--sky));
+    box-shadow:0 12px 26px -8px rgba(46,158,118,.55);
+  }
+  .btn-primary.active:hover{transform:translateY(-2px) scale(1.01);}
+  .btn-primary:disabled{cursor:not-allowed;}
+
+  /* ===== Mascot SVG ===== */
+  .mascot-eye-pupil{transition:transform .05s linear;}
+  .mascot-happy-jump{animation:mascotJump .55s ease;}
+  @keyframes mascotJump{
+    0%{transform:translateY(0) rotate(0);}
+    30%{transform:translateY(-14px) rotate(-4deg);}
+    55%{transform:translateY(0) rotate(3deg);}
+    75%{transform:translateY(-6px) rotate(-2deg);}
+    100%{transform:translateY(0) rotate(0);}
+  }
+
+  /* ===== Loading / Error ===== */
+  .state-card{
+    background:var(--card);border-radius:var(--radius-lg);
+    padding:40px 26px;text-align:center;box-shadow:var(--shadow);margin-top:10px;
+  }
+  .spinner{
+    width:52px;height:52px;margin:0 auto 18px;
+    border:6px solid var(--sky-pale);
+    border-top-color:var(--sky);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .state-title{font-weight:800;font-size:1.05rem;margin-bottom:6px;}
+  .state-sub{color:var(--ink-soft);font-size:.9rem;}
+  .state-emoji{font-size:2.4rem;margin-bottom:10px;}
+  .btn-retry{
+    margin-top:18px;background:var(--sky-pale);color:var(--sky-dark);
+    border:none;border-radius:999px;padding:10px 22px;font-weight:800;
+  }
+
+  /* ===== Tasks screen ===== */
+  .tasks-header{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card);border-radius:var(--radius-lg);
+    padding:18px 22px;box-shadow:var(--shadow);margin-top:6px;
+  }
+  .student-hello{font-weight:800;font-size:1.05rem;}
+  .change-student{font-size:.78rem;color:var(--sky-dark);font-weight:700;background:none;border:none;padding:2px;margin-top:4px;}
+  .streak-pill{
+    display:flex;align-items:center;gap:6px;
+    background:linear-gradient(135deg,#FFE3B0,var(--yellow));
+    color:#8a5a00;font-weight:800;font-size:.95rem;
+    padding:9px 16px;border-radius:999px;
+  }
+
+  .progress-row{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+  .progress-dot{
+    width:34px;height:34px;border-radius:50%;
+    background:#E4EEF2;color:#9fb3bd;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;transition:all .3s ease;
+  }
+  .progress-dot.done{
+    background:linear-gradient(135deg,var(--green),var(--sky));
+    color:#fff;transform:scale(1.08);
+    box-shadow:0 8px 16px -6px rgba(46,158,118,.5);
+  }
+
+  .task-card{
+    background:var(--card);border-radius:var(--radius-md);
+    padding:18px 18px;box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:14px;
+    margin-bottom:14px;
+    border:2px solid transparent;
+    transition:border-color .25s ease, transform .15s ease;
+  }
+  .task-card.done{border-color:var(--green);background:linear-gradient(0deg,#F1FBF6,#fff);}
+  .task-emoji{font-size:1.7rem;width:44px;text-align:center;}
+  .task-info{flex:1;}
+  .task-title{font-weight:800;font-size:1rem;}
+  .task-sub{color:var(--ink-soft);font-size:.8rem;margin-top:2px;}
+  .task-check{
+    width:38px;height:38px;border-radius:12px;
+    border:3px solid #D7E4E9;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;color:#fff;flex-shrink:0;
+    transition:all .2s ease;
+  }
+  .task-check.checked{background:var(--green);border-color:var(--green-dark);}
+  .task-card.saving .task-check{opacity:.5;}
+
+  .celebrate-msg{
+    text-align:center;font-weight:800;color:var(--green-dark);
+    background:#EAFBF3;border-radius:var(--radius-md);
+    padding:14px;margin:6px 0 18px;font-size:.95rem;
+  }
+
+  .calendar-title{font-weight:800;margin:26px 0 10px;font-size:.95rem;color:var(--ink-soft);}
+  .star-calendar{display:flex;gap:8px;justify-content:space-between;overflow-x:auto;padding-bottom:4px;}
+  .cal-day{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:34px;}
+  .cal-dot{width:22px;height:22px;border-radius:50%;background:#D7E4E9;}
+  .cal-dot.full{background:var(--green);}
+  .cal-dot.partial{background:var(--yellow);}
+  .cal-dot.empty{background:#D7E4E9;}
+  .cal-label{font-size:.65rem;color:var(--ink-soft);}
+
+  /* ===== Toast ===== */
+  #toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;
+    font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;
+    transition:all .3s ease;z-index:80;max-width:90vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ===== Confetti ===== */
+  #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60;}
+  .confetto{position:absolute;top:-12px;border-radius:2px;animation:confettiFall linear forwards;}
+  @keyframes confettiFall{
+    to{transform:translateY(105vh) rotate(400deg);opacity:.9;}
+  }
+
+  /* ===== Modal (teacher login) ===== */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,40,50,.45);
+    display:flex;align-items:center;justify-content:center;z-index:70;padding:18px;
+  }
+  .modal-box{
+    background:#fff;border-radius:var(--radius-lg);padding:28px 24px;
+    width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;
+  }
+  .modal-box h2{font-size:1.1rem;margin:0 0 6px;}
+  .modal-box p{color:var(--ink-soft);font-size:.85rem;margin:0 0 16px;}
+  .modal-box input[type=password]{
+    width:100%;padding:13px 14px;border-radius:var(--radius-sm);
+    border:2px solid var(--sky-pale);font-size:1rem;text-align:center;
+    outline:none;margin-bottom:12px;
+  }
+  .modal-box input[type=password]:focus{border-color:var(--sky);}
+  .modal-actions{display:flex;gap:10px;}
+  .btn-sm{flex:1;padding:11px;border-radius:999px;border:none;font-weight:800;font-size:.88rem;}
+  .btn-sm.cancel{background:#EEF3F5;color:var(--ink-soft);}
+  .btn-sm.confirm{background:var(--sky);color:#fff;}
+  .modal-error{color:var(--coral);font-size:.8rem;min-height:18px;margin-top:-4px;margin-bottom:6px;}
+
+  /* ===== Teacher dashboard ===== */
+  #teacherDashboard{position:fixed;inset:0;background:var(--bg);z-index:65;overflow-y:auto;}
+  .dash-wrap{max-width:920px;margin:0 auto;padding:18px 18px 60px;}
+  .dash-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .dash-title{font-weight:800;font-size:1.2rem;}
+  .btn-close-dash{background:#fff;border:2px solid var(--sky-pale);border-radius:999px;padding:9px 18px;font-weight:800;color:var(--sky-dark);}
+
+  .dash-toolbar{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    background:#fff;border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .dash-toolbar input[type=search]{
+    flex:1;min-width:150px;padding:10px 14px;border-radius:999px;border:2px solid var(--sky-pale);outline:none;font-family:var(--font-body);
+  }
+  .seg-group{display:flex;background:var(--sky-pale);border-radius:999px;padding:4px;gap:2px;}
+  .seg-btn{border:none;background:none;padding:8px 14px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--sky-dark);}
+  .seg-btn.active{background:var(--sky);color:#fff;}
+  .btn-export{background:var(--green);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-weight:800;font-size:.85rem;}
+
+  .dash-grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:760px){.dash-grid{grid-template-columns:1.3fr 1fr;}}
+  .panel{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);}
+  .panel h3{margin:0 0 12px;font-size:.98rem;}
+
+  table.leaderboard{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table.leaderboard th{text-align:right;color:var(--ink-soft);font-size:.75rem;padding:6px 8px;border-bottom:2px solid var(--sky-pale);cursor:pointer;user-select:none;}
+  table.leaderboard td{padding:8px;border-bottom:1px solid #F0F5F7;}
+  table.leaderboard tr.alert td{background:#FFF3F0;}
+  .rank-badge{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--sky-pale);color:var(--sky-dark);font-weight:800;font-size:.7rem;align-items:center;justify-content:center;}
+  .name-tag{font-weight:700;}
+  .alert-flag{color:var(--coral);font-size:.72rem;font-weight:800;}
+
+  .chart-bars{display:flex;gap:20px;align-items:flex-end;height:180px;padding-top:10px;}
+  .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .chart-bar{width:100%;max-width:46px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--sky),var(--green));transition:height .6s ease;}
+  .chart-pct{font-size:.75rem;font-weight:800;margin-bottom:4px;}
+  .chart-label{font-size:.72rem;color:var(--ink-soft);margin-top:6px;text-align:center;}
+
+  .empty-note{color:var(--ink-soft);font-size:.85rem;text-align:center;padding:18px;}
+
+  footer.tiny-note{max-width:640px;margin:14px auto 0;text-align:center;color:var(--ink-soft);font-size:.72rem;opacity:.8;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <button id="teacherBtn" class="teacher-btn" type="button">🎓 الأستاذ</button>
+    <div class="brand">
+      <span class="brand-title">رفقاء القرآن والنحو</span>
+      <span class="brand-sub">تابع إنجازك اليومي بكل حماس ✨</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ===== شاشة الترحيب ===== -->
+    <section id="screen-welcome" class="screen">
+      <div class="welcome-card">
+        <div class="mascot-wrap">
+          <!-- الشخصية الكرتونية (Mascot) - SVG بالكامل -->
+          <svg id="mascotSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="182" rx="55" ry="9" fill="#DCEFF5"/>
+            <!-- الجسم -->
+            <path d="M60 150 Q100 175 140 150 L135 118 Q100 130 65 118 Z" fill="#5FD3A3"/>
+            <!-- الرأس -->
+            <circle cx="100" cy="90" r="62" fill="#FFE1C2"/>
+            <!-- الأذنان -->
+            <circle cx="43" cy="88" r="11" fill="#FFE1C2"/>
+            <circle cx="157" cy="88" r="11" fill="#FFE1C2"/>
+            <!-- الشعر/العمامة الصغيرة -->
+            <path d="M42 70 Q100 20 158 70 Q150 45 100 40 Q50 45 42 70 Z" fill="#4FB6E8"/>
+            <circle cx="100" cy="38" r="8" fill="#4FB6E8"/>
+            <!-- الخدود -->
+            <circle id="cheekL" cx="60" cy="104" r="10" fill="#FF9B6A" opacity=".45"/>
+            <circle id="cheekR" cx="140" cy="104" r="10" fill="#FF9B6A" opacity=".45"/>
+            <!-- العينان -->
+            <g id="eyeL">
+              <ellipse cx="78" cy="90" rx="13" ry="15" fill="#fff"/>
+              <circle class="mascot-eye-pupil" id="pupilL" cx="78" cy="90" r="6.5" fill="#1F3B4D"/>
+              <circle cx="80.5" cy="87" r="2" fill="#fff"/>
+            </g>
+            <g id="eyeR">
+              <ellipse cx="122" cy="90" rx="13" ry="15" fill="#fff"/>
+              <circle class="mascot-eye-pupil" id="pupilR" cx="122" cy="90" r="6.5" fill="#1F3B4D"/>
+              <circle cx="124.5" cy="87" r="2" fill="#fff"/>
+            </g>
+            <!-- الفم -->
+            <path id="mascotMouth" d="M85 112 Q100 122 115 112" stroke="#1F3B4D" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <!-- كتاب صغير بجانبه -->
+            <g transform="translate(28,140)">
+              <rect x="0" y="0" width="26" height="18" rx="3" fill="#FFC94A"/>
+              <line x1="13" y1="2" x2="13" y2="16" stroke="#fff" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+
+        <p class="welcome-hello">أهلاً بك! 👋</p>
+
+        <label class="field-label" for="studentSelect">اختر اسمك من القائمة</label>
+        <div class="select-wrap" id="selectWrap">
+          <select id="studentSelect" disabled>
+            <option value="">جارٍ تحميل الأسماء…</option>
+          </select>
+        </div>
+
+        <button id="startBtn" class="btn-primary" disabled type="button">ابدأ 🚀</button>
+      </div>
+    </section>
+
+    <!-- ===== حالة التحميل ===== -->
+    <section id="screen-loading" class="screen hidden">
+      <div class="state-card">
+        <div class="spinner"></div>
+        <div class="state-title">لحظات… نجهز كل شيء</div>
+      </div>
+    </section>
+
+    <!-- ===== حالة الخطأ: لا اتصال بالإنترنت ===== -->
+    <section id="screen-error-offline" class="screen hidden">
+      <div class="state-card">
+        <div class="state-emoji">📡</div>
+        <div class="state-title">تعذّر الاتصال بالإنترنت</div>
+        <div class="state-sub">تحقق من الاتصال ثم أعد المحاولة</div>
+        <button class="btn-retry" data-retry>إعادة المحاولة</button>
+      </div>
+    </section>
+
+    <!-- ===== حالة الخطأ: لا توجد أسماء ===== -->
+    <section id="screen-error-empty" class="screen hidden">
+      <div class="state-card">
+        <div class="state-emoji">📭</div>
+        <div class="state-title">لا توجد أسماء مسجّلة بعد</div>
+        <div class="state-sub">اطلب من أستاذك إضافة أسماء التلاميذ في السجل</div>
+        <button class="btn-retry" data-retry>إعادة المحاولة</button>
+      </div>
+    </section>
+
+    <!-- ===== شاشة المهام اليومية ===== -->
+    <section id="screen-tasks" class="screen hidden">
+
+      <div class="tasks-header">
+        <div>
+          <div class="student-hello" id="studentHello">أهلاً يا …</div>
+          <button class="change-student" id="changeStudentBtn" type="button">تغيير الاسم</button>
+        </div>
+        <div class="streak-pill">🔥 <span id="streakCount">0</span> يوم متتالي</div>
+      </div>
+
+      <div class="progress-row" id="progressRow">
+        <div class="progress-dot" data-slot="1">⭐</div>
+        <div class="progress-dot" data-slot="2">⭐</div>
+        <div class="progress-dot" data-slot="3">⭐</div>
+      </div>
+
+      <div id="celebrateAllMsg" class="celebrate-msg hidden">🎉 ما شاء الله! أنجزت كل مهامك اليوم 🎉</div>
+
+      <div class="task-card" data-task="wird">
+        <div class="task-emoji">📖</div>
+        <div class="task-info">
+          <div class="task-title">حفظ الورد اليومي</div>
+          <div class="task-sub">القرآن الكريم</div>
+        </div>
+        <div class="task-check" data-check></div>
+      </div>
+
+      <div class="task-card" data-task="tuhfa">
+        <div class="task-emoji">📜</div>
+        <div class="task-info">
+          <div class="task-title">حفظ تحفة الأطفال</div>
+          <div class="task-sub">أبيات جديدة</div>
+        </div>
+        <div class="task-check" data-check></div>
+      </div>
+
+      <div class="task-card" data-task="irab">
+        <div class="task-emoji">✍️</div>
+        <div class="task-info">
+          <div class="task-title">إعراب الجملة</div>
+          <div class="task-sub">الآجرومية</div>
+        </div>
+        <div class="task-check" data-check></div>
+      </div>
+
+      <div class="calendar-title">🗓️ آخر أيامك</div>
+      <div class="star-calendar" id="starCalendar"></div>
+
+    </section>
+
+  </main>
+
+  <footer class="tiny-note">رفقاء القرآن والنحو — صُنع بحب لطلاب العلم الصغار</footer>
+
+  <!-- ===== نافذة دخول الأستاذ ===== -->
+  <div id="teacherLoginModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h2>🎓 دخول الأستاذ</h2>
+      <p>هذه حماية شكلية بسيطة فقط، وليست حماية حقيقية لأن الموقع ثابت (Static).</p>
+      <input type="password" id="teacherPassInput" placeholder="كلمة المرور" autocomplete="off">
+      <div class="modal-error" id="teacherLoginError"></div>
+      <div class="modal-actions">
+        <button class="btn-sm cancel" id="teacherCancelBtn" type="button">إلغاء</button>
+        <button class="btn-sm confirm" id="teacherConfirmBtn" type="button">دخول</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== لوحة تحكم الأستاذ ===== -->
+  <div id="teacherDashboard" class="hidden">
+    <div class="dash-wrap">
+      <div class="dash-topbar">
+        <button class="btn-close-dash" id="closeDashBtn" type="button">إغلاق ✖</button>
+        <div class="dash-title">لوحة تحكم الأستاذ 🎓</div>
+      </div>
+
+      <div class="dash-toolbar">
+        <input type="search" id="dashSearch" placeholder="بحث عن اسم…">
+        <div class="seg-group" id="periodSeg">
+          <button class="seg-btn active" data-period="today" type="button">اليوم</button>
+          <button class="seg-btn" data-period="week" type="button">الأسبوع</button>
+          <button class="seg-btn" data-period="all" type="button">الكل</button>
+        </div>
+        <button class="btn-export" id="exportCsvBtn" type="button">⬇️ تصدير CSV</button>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <h3>🏆 لوحة الصدارة</h3>
+          <div id="leaderboardWrap"><div class="empty-note">جارٍ التحميل…</div></div>
+        </div>
+        <div class="panel">
+          <h3>📊 نسبة إنجاز كل مهمة (الفصل)</h3>
+          <div class="chart-bars" id="chartBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="confettiLayer"></div>
+  <div id="toast"></div>
+
+</div>
+<script src="script.js"></script>
+</body>
+</html>
