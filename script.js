@@ -1,10 +1,9 @@
 /* =========================================================================
    رفقاء القرآن والنحو — script.js
-   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية الإنمي،
-   تأكيد المهام وقفل التكرار اليومي، لوحة تحكم المعلم وتصدير CSV.
+   معدل بالكامل: إصلاح القفل الموحد للجهزة، تصحيح الـ Streak،
+   الخروج التلقائي إلى الشاشة الرئيسية، وعرض لوحة صدارة اليوم بكسل بكسل.
    ========================================================================= */
 
-/* ================== 1) الإعدادات ================== */
 const CONFIG = {
   WEB_APP_URL: "https://script.google.com/macros/s/AKfycby0oMaYQi6Hy_LvD-fZcY9fxUEEgloCrsv8CX4svRfhlvQCU2Q6IL3kGWswNrGhohJyNQ/exec",
   CLASS_CODE: "student95",
@@ -59,7 +58,7 @@ function setScreen(id) {
   if (target) target.classList.remove("hidden");
 }
 
-/* ================== 3) طبقة الاتصال بالشيت (GET/POST) ================== */
+/* ================== 3) طبقة الاتصال بالشيت ================== */
 async function apiGet(action, params = {}) {
   const url = new URL(CONFIG.WEB_APP_URL);
   url.searchParams.set("action", action);
@@ -83,7 +82,7 @@ async function apiPost(payload) {
   return data;
 }
 
-/* ================== 4) قائمة الانتظار المحلية (Sync Queue) ================== */
+/* ================== 4) قائمة الانتظار المحلية ================== */
 const QUEUE_KEY = "rq_sync_queue_v1";
 function readQueue() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
@@ -116,7 +115,7 @@ async function flushQueue() {
 window.addEventListener("online", flushQueue);
 setInterval(flushQueue, CONFIG.SYNC_RETRY_INTERVAL_MS);
 
-/* ================== 5) الشخصية الكرتونية الإنمي (Mascot) ================== */
+/* ================== 5) الشخصية الكرتونية الإنمي ================== */
 const Mascot = {
   el: null, pupilL: null, pupilR: null,
   eyesNeutral: null, eyesHappy: null,
@@ -167,11 +166,6 @@ const Mascot = {
     }
   },
 
-  confused() {
-    this.neutral();
-    if (this.speechBubble) this.speechBubble.textContent = "عذراً، حدث خطأ ما! تحقق من الاتصال بالحاسوب/الهاتف.";
-  },
-
   neutral() {
     if (this.eyesNeutral) this.eyesNeutral.classList.remove("hidden-feature");
     if (this.eyesHappy) this.eyesHappy.classList.add("hidden-feature");
@@ -182,7 +176,7 @@ const Mascot = {
 };
 
 /* ================== 6) الكونفيتي ================== */
-function fireConfetti(count = 26) {
+function fireConfetti(count = 35) {
   const layer = document.getElementById("confettiLayer");
   if (!layer) return;
   const colors = ["#4FB6E8", "#5FD3A3", "#FFC94A", "#FF9B6A", "#FF7A7A"];
@@ -207,15 +201,12 @@ const State = {
   today: { wird: false, tuhfa: false, irab: false },
   history: [],
   streak: 0,
-  isSubmittedToday: false // للتحقق من قفل اليوم
+  isSubmittedToday: false
 };
+
 const STUDENT_KEY = "rq_selected_student_v1";
 
-function getLockStorageKey(name) {
-  return `rq_lock_${name}_${todayStr()}`;
-}
-
-/* ================== 8) تهيئة شاشة الترحيب وتوجيهات الجهاز ================== */
+/* ================== 8) تهيئة شاشة الترحيب ================== */
 async function initWelcomeScreen() {
   Mascot.init();
   initDeviceInstructions();
@@ -226,10 +217,6 @@ async function initWelcomeScreen() {
 
   wrap.addEventListener("mousemove", (e) => Mascot.lookAt(e.clientX, e.clientY));
   wrap.addEventListener("mouseleave", () => Mascot.resetLook());
-  wrap.addEventListener("touchstart", (e) => {
-    const t = e.touches[0];
-    if (t) Mascot.lookAt(t.clientX, t.clientY);
-  }, { passive: true });
 
   select.addEventListener("change", () => {
     if (select.value) {
@@ -257,12 +244,17 @@ async function initWelcomeScreen() {
     setScreen("screen-welcome");
   });
 
-  document.querySelectorAll("[data-retry]").forEach(btn => {
-    btn.addEventListener("click", loadNamesList);
-  });
-
+  // إغلاق النافذة والعودة الفورية للصفحة الرئيسية
   document.getElementById("closeSuccessModalBtn")?.addEventListener("click", () => {
     document.getElementById("successModal").classList.add("hidden");
+    localStorage.removeItem(STUDENT_KEY);
+    State.student = null;
+    Mascot.neutral();
+    setScreen("screen-welcome");
+  });
+
+  document.querySelectorAll("[data-retry]").forEach(btn => {
+    btn.addEventListener("click", loadNamesList);
   });
 
   await loadNamesList();
@@ -296,7 +288,6 @@ async function loadNamesList() {
     const names = data.names || [];
     if (!names.length) {
       setScreen("screen-error-empty");
-      Mascot.confused();
       return;
     }
     select.innerHTML = `<option value="">-- اختر اسمك --</option>` +
@@ -305,7 +296,6 @@ async function loadNamesList() {
     setScreen("screen-welcome");
   } catch (err) {
     setScreen("screen-error-offline");
-    Mascot.confused();
   }
 }
 
@@ -315,49 +305,25 @@ function escapeHtml(s) {
   }[m]));
 }
 
-/* ================== 9) شاشة المهام اليومية ================== */
+/* ================== 9) تدفق التلميذ والمهام ================== */
 async function enterStudentFlow(name) {
   State.student = name;
   setScreen("screen-loading");
   document.getElementById("studentHello").textContent = `أهلاً يا ${name} 🌟`;
 
-  // التحقق مما إذا كان الطالب قد أرسل مهامه سابقاً اليوم
-  const isLockedLocally = localStorage.getItem(getLockStorageKey(name)) === "true";
-
   try {
     await Promise.all([loadTodayState(), loadHistoryState()]);
     
-    // إذا ثبت التسجيل إما محلياً أو من الشيت
-    const hasAnyDone = State.today.wird || State.today.tuhfa || State.today.irab;
-    State.isSubmittedToday = isLockedLocally || hasAnyDone;
+    // فحص القفل الموحد بناءً على بيانات الشيت القادمة لليوم
+    State.isSubmittedToday = (State.today.wird || State.today.tuhfa || State.today.irab);
 
     renderTasksScreen();
     setScreen("screen-tasks");
     bindTaskCards();
     await flushQueue();
   } catch (err) {
-    const cachedToday = getLocalTodayCache(name);
-    if (cachedToday) {
-      State.today = cachedToday;
-      State.history = [];
-      State.isSubmittedToday = isLockedLocally;
-      renderTasksScreen();
-      setScreen("screen-tasks");
-      bindTaskCards();
-      showToast("⚠️ نعرض آخر بيانات محفوظة، لا يوجد اتصال حاليًا");
-    } else {
-      setScreen("screen-error-offline");
-    }
+    setScreen("screen-error-offline");
   }
-}
-
-function localTodayCacheKey(name) { return `rq_today_cache_${name}_${todayStr()}`; }
-function getLocalTodayCache(name) {
-  try { return JSON.parse(localStorage.getItem(localTodayCacheKey(name))); }
-  catch { return null; }
-}
-function setLocalTodayCache(name, obj) {
-  localStorage.setItem(localTodayCacheKey(name), JSON.stringify(obj));
 }
 
 async function loadTodayState() {
@@ -367,7 +333,6 @@ async function loadTodayState() {
     tuhfa: !!data.tuhfa,
     irab: !!data.irab,
   };
-  setLocalTodayCache(State.student, State.today);
 }
 
 async function loadHistoryState() {
@@ -379,38 +344,50 @@ async function loadHistoryState() {
 function computeStreak() {
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
-  const todayAll = State.today.wird && State.today.tuhfa && State.today.irab;
-  let streak = todayAll ? 1 : 0;
-  let cursor = 1;
-  while (true) {
-    const ds = dateStrDaysAgo(cursor);
-    const rec = map[ds];
-    if (rec && rec.wird && rec.tuhfa && rec.irab) {
-      streak++;
-      cursor++;
-    } else break;
+  
+  // دمج حالة اليوم
+  const todayDone = State.today.wird || State.today.tuhfa || State.today.irab;
+  
+  let streak = 0;
+  if (todayDone) {
+    streak = 1;
+    let cursor = 1;
+    while (true) {
+      const ds = dateStrDaysAgo(cursor);
+      const rec = map[ds];
+      if (rec && (rec.wird || rec.tuhfa || rec.irab)) {
+        streak++;
+        cursor++;
+      } else break;
+    }
+  } else {
+    // إذا لم ينجز شيئاً بعد لليوم، نفحص الأيام السابقة متتالية
+    let cursor = 1;
+    while (true) {
+      const ds = dateStrDaysAgo(cursor);
+      const rec = map[ds];
+      if (rec && (rec.wird || rec.tuhfa || rec.irab)) {
+        streak++;
+        cursor++;
+      } else break;
+    }
   }
+  
   State.streak = streak;
 }
 
 function renderTasksScreen() {
   document.getElementById("streakCount").textContent = State.streak;
   
-  const confirmBtn = document.getElementById("confirmTasksBtn");
+  const actionContainer = document.getElementById("actionContainer");
   const alreadyBanner = document.getElementById("alreadySubmittedBanner");
 
   if (State.isSubmittedToday) {
-    if (alreadyBanner) alreadyBanner.classList.remove("hidden");
-    if (confirmBtn) {
-      confirmBtn.disabled = true;
-      confirmBtn.style.display = "none";
-    }
+    alreadyBanner.classList.remove("hidden");
+    actionContainer.classList.add("hidden");
   } else {
-    if (alreadyBanner) alreadyBanner.classList.add("hidden");
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.style.display = "block";
-    }
+    alreadyBanner.classList.add("hidden");
+    actionContainer.classList.remove("hidden");
   }
 
   TASKS.forEach(t => {
@@ -420,9 +397,18 @@ function renderTasksScreen() {
     const done = !!State.today[t.key];
     
     card.classList.toggle("done", done);
-    card.classList.toggle("disabled-card", State.isSubmittedToday);
-    check.classList.toggle("checked", done);
-    check.textContent = done ? "✓" : "";
+
+    if (State.isSubmittedToday) {
+      card.classList.add("readonly-card");
+      check.className = "task-status-badge";
+      check.textContent = done ? "✔" : "✖";
+      check.style.color = done ? "var(--green-dark)" : "#a0aec0";
+    } else {
+      card.classList.remove("readonly-card");
+      check.className = "task-check" + (done ? " checked" : "");
+      check.textContent = done ? "✓" : "";
+      check.style.color = "#fff";
+    }
   });
 
   const doneCount = TASKS.filter(t => State.today[t.key]).length;
@@ -442,8 +428,9 @@ function renderStarCalendar() {
   const days = [];
   for (let i = CONFIG.HISTORY_DAYS - 1; i >= 0; i--) days.push(dateStrDaysAgo(i));
   const weekdayFmt = new Intl.DateTimeFormat("ar", { weekday: "short" });
+  
   days.forEach(ds => {
-    const isToday = ds === todayStr();
+    const isToday = (ds === todayStr());
     const rec = isToday ? State.today : map[ds];
     let cls = "empty";
     if (rec) {
@@ -459,7 +446,6 @@ function renderStarCalendar() {
   });
 }
 
-// التحديد المحلي فقط (بدون تسجيل تلقائي بالسيرفر)
 function bindTaskCards() {
   document.querySelectorAll(".task-card").forEach(card => {
     const key = card.dataset.task;
@@ -467,10 +453,8 @@ function bindTaskCards() {
     card.replaceWith(newCard);
 
     newCard.addEventListener("click", () => {
-      if (State.isSubmittedToday) return; // منع التغيير في حال القفل
-      
+      if (State.isSubmittedToday) return;
       State.today[key] = !State.today[key];
-      setLocalTodayCache(State.student, State.today);
       renderTasksScreen();
     });
   });
@@ -483,20 +467,19 @@ function bindTaskCards() {
   }
 }
 
-// التنسيق النهائي والحفظ الفعلي عند الضغط على زر "تأكيد وحفظ المهام"
+// زر التأكيد وإظهار الرسالة فوراً دون أي تأخير
 async function onConfirmAndSubmitAll() {
   if (State.isSubmittedToday) return;
 
   State.isSubmittedToday = true;
-  localStorage.setItem(getLockStorageKey(State.student), "true");
-  
   computeStreak();
   renderTasksScreen();
 
-  const allCompleted = TASKS.every(t => State.today[t.key]);
-  fireConfetti(allCompleted ? 60 : 30);
+  // إظهار الرسالة التحفيزية والكونفيتي فوراً بمجرد الضغط
+  fireConfetti(40);
+  document.getElementById("successModal").classList.remove("hidden");
 
-  // إرسال كتل المهام للـ Server / Google Apps Script
+  // إرسال البيانات خلف الكواليس
   for (const t of TASKS) {
     const payload = {
       studentName: State.student,
@@ -512,12 +495,6 @@ async function onConfirmAndSubmitAll() {
       enqueueUpdate(payload);
     }
   }
-
-  // إظهار نافذة التهنئة المنبثقة
-  const successModal = document.getElementById("successModal");
-  if (successModal) {
-    successModal.classList.remove("hidden");
-  }
 }
 
 /* ================== 10) واجهة الأستاذ ================== */
@@ -526,8 +503,6 @@ const Teacher = {
   records: [],
   students: [],
   period: "today",
-  sortKey: "name",
-  sortDir: "asc",
 };
 
 function initTeacherUI() {
@@ -590,51 +565,41 @@ async function openTeacherDashboard() {
   }
 }
 
+// فلترة صحيحة ودقيقة لبيانات اليوم، الأسبوع والكل
 function filteredRecordsForPeriod() {
   const today = todayStr();
   const weekAgo = dateStrDaysAgo(6);
   return Teacher.records.filter(r => {
-    if (Teacher.period === "today") return r.date === today;
-    if (Teacher.period === "week") return r.date >= weekAgo && r.date <= today;
-    return true;
+    if (!r.date) return false;
+    const recDate = String(r.date).trim();
+    if (Teacher.period === "today") return recDate === today;
+    if (Teacher.period === "week") return recDate >= weekAgo && recDate <= today;
+    return true; // all
   });
 }
 
 function buildLeaderboardRows() {
   const recs = filteredRecordsForPeriod();
   const byStudent = {};
+  
   Teacher.students.forEach(name => {
-    byStudent[name] = { name, wird: 0, tuhfa: 0, irab: 0, lastDate: null };
+    byStudent[name] = { name, wird: 0, tuhfa: 0, irab: 0 };
   });
+
   recs.forEach(r => {
-    if (!byStudent[r.studentName]) byStudent[r.studentName] = { name: r.studentName, wird: 0, tuhfa: 0, irab: 0, lastDate: null };
-    const row = byStudent[r.studentName];
+    const name = r.studentName || r.student;
+    if (!name) return;
+    if (!byStudent[name]) {
+      byStudent[name] = { name, wird: 0, tuhfa: 0, irab: 0 };
+    }
+    const row = byStudent[name];
     if (r.wird) row.wird++;
     if (r.tuhfa) row.tuhfa++;
     if (r.irab) row.irab++;
-    if (!row.lastDate || r.date > row.lastDate) row.lastDate = r.date;
   });
 
-  const lastActiveAll = {};
-  Teacher.records.forEach(r => {
-    if (r.wird || r.tuhfa || r.irab) {
-      if (!lastActiveAll[r.studentName] || r.date > lastActiveAll[r.studentName]) {
-        lastActiveAll[r.studentName] = r.date;
-      }
-    }
-  });
-
-  const today = todayStr();
   const rows = Object.values(byStudent).map(row => {
     row.score = row.wird + row.tuhfa + row.irab;
-    const lastActive = lastActiveAll[row.name];
-    let daysSince = null;
-    if (lastActive) {
-      daysSince = Math.round((new Date(today) - new Date(lastActive)) / 86400000);
-    } else {
-      daysSince = 999;
-    }
-    row.inactive = daysSince >= 3;
     return row;
   });
 
@@ -655,9 +620,9 @@ function renderLeaderboard() {
     <th>#</th><th>الاسم</th><th>📖</th><th>📜</th><th>✍️</th><th>المجموع</th>
   </tr></thead><tbody>`;
   rows.forEach((r, i) => {
-    html += `<tr class="${r.inactive ? "alert" : ""}">
+    html += `<tr>
       <td><span class="rank-badge">${i + 1}</span></td>
-      <td><span class="name-tag">${escapeHtml(r.name)}</span>${r.inactive ? `<div class="alert-flag">⚠️ لم يُنجز منذ 3 أيام+</div>` : ""}</td>
+      <td><span class="name-tag">${escapeHtml(r.name)}</span></td>
       <td>${r.wird}</td><td>${r.tuhfa}</td><td>${r.irab}</td>
       <td><strong>${r.score}</strong></td>
     </tr>`;
