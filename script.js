@@ -6,7 +6,8 @@
 
 /* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  WEB_APP_URL: "https://script.google.com/macros/s/AKfycbysU1eTb3pL-Pg3tY8oIl5udm8hYTIwjbCSM29GHLjaZHCG_5lMmUNbUH8iM42kKpoU/exec",
+  // الرابط الجديد الذي وضعته في رسالتك
+  WEB_APP_URL: "https://script.google.com/macros/s/AKfycby8UqZBeKSbJknfsNQSNS1yUari6tjoFYKZX-b2e6fwlNhCauC5c8gdWruqdmZJ_mwiGg/exec",
   CLASS_CODE: "student95",
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
   HISTORY_DAYS: 14,
@@ -37,8 +38,6 @@ function dateStrDaysAgo(n) {
   return `${y}-${m}-${day}`;
 }
 
-// توحيد أي صيغة تاريخ قادمة من الخادم (قد تحتوي وقتًا/منطقة زمنية) إلى YYYY-MM-DD
-// فقط، حتى تنجح المقارنات النصية بين التواريخ دائمًا.
 function normalizeDateStr(d) {
   if (!d) return "";
   const s = String(d);
@@ -92,7 +91,7 @@ async function apiPost(payload) {
 }
 
 /* ================== 4) قائمة الانتظار المحلية (Sync Queue) ================== */
-const QUEUE_KEY = "rq_sync_queue_v1";
+const QUEUE_KEY = "rq_sync_queue_v2"; // تم تغيير الإصدار لتفادي البيانات القديمة
 function readQueue() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
   catch { return []; }
@@ -111,7 +110,8 @@ async function flushQueue() {
   const remaining = [];
   for (const item of q) {
     try {
-      await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...item });
+      // إرسال الطلب المجمع من الطابور
+      await apiPost(item);
     } catch (e) {
       remaining.push(item);
     }
@@ -331,21 +331,16 @@ function escapeHtml(s) {
 /* ================== 9) شاشة المهام اليومية ================== */
 async function enterStudentFlow(name) {
   State.student = name;
-  State.justSubmitted = false; // كل دخول جديد للحساب يُعتبر "زيارة" وليس "تأكيدًا للتو"
+  State.justSubmitted = false; 
   setScreen("screen-loading");
   document.getElementById("studentHello").textContent = `أهلاً يا ${name} 🌟`;
 
-  // التحقق مما إذا كان الطالب قد أرسل مهامه سابقاً اليوم (كخط دفاع احتياطي محلي)
   const isLockedLocally = localStorage.getItem(getLockStorageKey(name)) === "true";
 
   try {
-    // مهم: يجب تحميل حالة اليوم أولاً قبل حساب السلسلة المتتالية، حتى لا يتم
-    // حسابها ببيانات فارغة (سبب ظهور "0 يوم متتالي" خطأً عند الدخول من جديد).
     await loadTodayState();
     await loadHistoryState();
 
-    // القفل الحقيقي يعتمد على بيانات الخادم (وليس فقط على الجهاز الحالي)،
-    // بذلك يُمنع التسجيل مرتين سواء من الحاسوب أو من الهاتف.
     const hasAnyDone = State.today.wird || State.today.tuhfa || State.today.irab;
     const hasSubmittedFlag = State.today.submitted === true;
     State.isSubmittedToday = hasSubmittedFlag || hasAnyDone || isLockedLocally;
@@ -361,7 +356,7 @@ async function enterStudentFlow(name) {
       State.history = [];
       State.isSubmittedToday = isLockedLocally || cachedToday.submitted === true ||
         cachedToday.wird || cachedToday.tuhfa || cachedToday.irab;
-      computeStreak(); // كانت مفقودة هنا، فتبقى السلسلة المتتالية 0 دائماً في وضع عدم الاتصال
+      computeStreak(); 
       renderTasksScreen();
       setScreen("screen-tasks");
       bindTaskCards();
@@ -421,8 +416,6 @@ function renderTasksScreen() {
   const confirmBtn = document.getElementById("confirmTasksBtn");
   const alreadyBanner = document.getElementById("alreadySubmittedBanner");
 
-  // شريط "لقد قمت بالتأكيد مسبقاً" يظهر فقط عند العودة لاحقاً إلى الحساب،
-  // وليس مباشرة بعد الضغط على زر التأكيد في نفس الجلسة.
   const showAlreadyBanner = State.isSubmittedToday && !State.justSubmitted;
 
   if (showAlreadyBanner) {
@@ -453,13 +446,11 @@ function renderTasksScreen() {
     card.classList.toggle("disabled-card", State.isSubmittedToday);
 
     if (State.isSubmittedToday) {
-      // وضع العرض فقط: شارة بدل مربع الاختيار التفاعلي
       check.classList.remove("checked");
       check.classList.add("readonly");
       check.classList.toggle("missed-badge", !done);
       check.textContent = done ? "✅" : "➖";
     } else {
-      // وضع التعبئة النشطة: مربع اختيار تفاعلي
       check.classList.remove("readonly", "missed-badge");
       check.classList.toggle("checked", done);
       check.textContent = done ? "✓" : "";
@@ -500,7 +491,6 @@ function renderStarCalendar() {
   });
 }
 
-// التحديد المحلي فقط (بدون تسجيل تلقائي بالسيرفر)
 function bindTaskCards() {
   document.querySelectorAll(".task-card").forEach(card => {
     const key = card.dataset.task;
@@ -508,7 +498,7 @@ function bindTaskCards() {
     card.replaceWith(newCard);
 
     newCard.addEventListener("click", () => {
-      if (State.isSubmittedToday) return; // منع التغيير في حال القفل
+      if (State.isSubmittedToday) return; 
       
       State.today[key] = !State.today[key];
       setLocalTodayCache(State.student, State.today);
@@ -524,7 +514,6 @@ function bindTaskCards() {
   }
 }
 
-// التنسيق النهائي والحفظ الفعلي عند الضغط على زر "تأكيد وحفظ المهام"
 async function onConfirmAndSubmitAll() {
   if (State.isSubmittedToday) return;
 
@@ -538,37 +527,34 @@ async function onConfirmAndSubmitAll() {
   const allCompleted = TASKS.every(t => State.today[t.key]);
   fireConfetti(allCompleted ? 60 : 30);
 
-  // تظهر رسالة التهنئة فوراً مع الضغط على زر التأكيد، دون انتظار المزامنة مع الخادم
   const successModal = document.getElementById("successModal");
   if (successModal) {
     successModal.classList.remove("hidden");
   }
 
-  // المزامنة مع الخادم تتم في الخلفية دون تعطيل الواجهة
   syncSubmissionInBackground();
 }
 
+// ⚠️ هنا التغيير الجذري: إرسال جميع المهام في طلب واحد بدلاً من ثلاثة!
 async function syncSubmissionInBackground() {
-  // إرسال كل مهمة على حدة
-  for (const t of TASKS) {
-    const payload = {
-      studentName: State.student,
-      task: t.key,
-      completed: !!State.today[t.key],
-      clientTimestamp: new Date().toISOString(),
-    };
-    try {
-      if (!navigator.onLine) throw new Error("offline");
-      await apiPost({ action: "updateTask", classCode: CONFIG.CLASS_CODE, ...payload });
-    } catch (e) {
-      enqueueUpdate(payload);
-    }
-  }
+  const payload = {
+    action: "updateAllTasks",
+    classCode: CONFIG.CLASS_CODE,
+    studentName: State.student,
+    tasks: {
+      wird: !!State.today.wird,
+      tuhfa: !!State.today.tuhfa,
+      irab: !!State.today.irab
+    },
+    clientTimestamp: new Date().toISOString()
+  };
 
-  // ملاحظة: تم إلغاء إرسال حقل "submitted" الإضافي (كان تجريبياً) لأنه على الأرجح
-  // غير معروف لدى الخادم الحالي (Google Apps Script) وقد يتسبب في إفساد/إزاحة
-  // أعمدة المهام الحقيقية (wird/tuhfa/irab) عند الكتابة في عمود غير موجود.
-  // القفل بين الأجهزة يعتمد الآن فقط على: أي مهمة true في بيانات الخادم + القفل المحلي.
+  try {
+    if (!navigator.onLine) throw new Error("offline");
+    await apiPost(payload);
+  } catch (e) {
+    enqueueUpdate(payload);
+  }
 }
 
 /* ================== 10) واجهة الأستاذ ================== */
@@ -632,7 +618,6 @@ async function openTeacherDashboard() {
   document.getElementById("leaderboardWrap").innerHTML = `<div class="empty-note">جارٍ التحميل…</div>`;
   try {
     const data = await apiGet("getRecords", { classCode: CONFIG.CLASS_CODE });
-    // توحيد صيغة التاريخ حتى تنجح مقارنات "اليوم/الأسبوع/الكل" دائماً
     Teacher.records = (data.records || []).map(r => ({ ...r, date: normalizeDateStr(r.date) }));
     Teacher.students = data.students || [];
     renderLeaderboard();
