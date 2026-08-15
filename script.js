@@ -1,17 +1,28 @@
 /* =========================================================================
    رفقاء القرآن والنحو — script.js
-   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية الإنمي،
-   تأكيد المهام وقفل التكرار اليومي، لوحة تحكم المعلم وتصدير CSV.
+   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية،
+   الكونفيتي، الرسم البياني، وتصدير CSV.
    ========================================================================= */
 
-/* ================== 1) الإعدادات ================== */
+/* ================== 1) الإعدادات (يجب تعديلها من طرفك) ================== */
 const CONFIG = {
-  // الرابط الجديد الذي وضعته في رسالتك
-  WEB_APP_URL: "https://script.google.com/macros/s/AKfycby8UqZBeKSbJknfsNQSNS1yUari6tjoFYKZX-b2e6fwlNhCauC5c8gdWruqdmZJ_mwiGg/exec",
-  CLASS_CODE: "student95",
+  // رابط تطبيق الويب (Web App) الذي ستحصل عليه بعد نشر Code.gs
+  WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyNPAeTY2nubR2C1v6kVQU65TSlaBa-3WUjnun_T_hOY2XlY7GABXgoq3bhI8AnNI-kHw/exec",
+
+  // "رمز الصف" - تخفيف بسيط جدًا وليس حماية حقيقية.
+  // سيكون ظاهرًا لأي شخص يفتح كود الموقع على GitHub.
+  CLASS_CODE: "Anasjlab",
+
+  // تجزئة (SHA-256) لكلمة مرور الأستاذ - وليست كلمة المرور نفسها.
+  // هذه أيضًا حماية شكلية فقط (client-side) وليست حماية حقيقية،
+  // لأن أي شخص يمكنه قراءة كود JS ومحاولة كسر التجزئة نظريًا.
+  // لتوليد تجزئة كلمة مرورك: افتح Console بالمتصفح ونفّذ:
+  //   await sha256Hex("كلمة_المرور_التي_تريدها")
+  // (الدالة sha256Hex معرّفة أسفل هذا الملف)
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
-  HISTORY_DAYS: 14,
-  SYNC_RETRY_INTERVAL_MS: 20000,
+
+  HISTORY_DAYS: 14,          // عدد أيام تقويم النجوم
+  SYNC_RETRY_INTERVAL_MS: 20000, // محاولة مزامنة قائمة الانتظار كل 20 ثانية
 };
 
 const TASKS = [
@@ -21,7 +32,9 @@ const TASKS = [
 ];
 
 /* ================== 2) أدوات عامة ================== */
+
 function todayStr() {
+  // نستخدم صيغة yyyy-MM-dd محليًا (بدون اعتماد على منطقة زمنية للسيرفر)
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -38,22 +51,16 @@ function dateStrDaysAgo(n) {
   return `${y}-${m}-${day}`;
 }
 
-function normalizeDateStr(d) {
-  if (!d) return "";
-  const s = String(d);
-  return s.length >= 10 ? s.slice(0, 10) : s;
-}
-
 async function sha256Hex(text) {
   const enc = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
+// نعرّضها على window لتسهيل توليد التجزئة من الـ Console عند الإعداد
 window.sha256Hex = sha256Hex;
 
 function showToast(msg, ms = 2400) {
   const t = document.getElementById("toast");
-  if (!t) return;
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(showToast._timer);
@@ -67,6 +74,7 @@ function setScreen(id) {
 }
 
 /* ================== 3) طبقة الاتصال بالشيت (GET/POST) ================== */
+
 async function apiGet(action, params = {}) {
   const url = new URL(CONFIG.WEB_APP_URL);
   url.searchParams.set("action", action);
@@ -79,6 +87,7 @@ async function apiGet(action, params = {}) {
 }
 
 async function apiPost(payload) {
+  // نستخدم text/plain لتفادي CORS Preflight مع Google Apps Script
   const res = await fetch(CONFIG.WEB_APP_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -91,12 +100,16 @@ async function apiPost(payload) {
 }
 
 /* ================== 4) قائمة الانتظار المحلية (Sync Queue) ================== */
-const QUEUE_KEY = "rq_sync_queue_v2"; // تم تغيير الإصدار لتفادي البيانات القديمة
+
+const QUEUE_KEY = "rq_sync_queue_v1";
+
 function readQueue() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
   catch { return []; }
 }
-function writeQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function writeQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
 function enqueueUpdate(item) {
   const q = readQueue();
   q.push(item);
@@ -110,10 +123,13 @@ async function flushQueue() {
   const remaining = [];
   for (const item of q) {
     try {
-      // إرسال الطلب المجمع من الطابور
-      await apiPost(item);
+      const { __confirm, ...rest } = item;
+      const action = __confirm ? "confirmAssignments" : "updateTask";
+      await apiPost({ action, classCode: CONFIG.CLASS_CODE, ...rest });
+      // ملاحظة: إن كان السيرفر قد اعتبرها "مؤكَّدة مسبقًا" فهذا لا يغيّر شيئًا هنا،
+      // لأن الواجهة مقفلة أصلًا محليًا منذ لحظة التأكيد الأولى.
     } catch (e) {
-      remaining.push(item);
+      remaining.push(item); // نبقيها لمحاولة لاحقة
     }
   }
   writeQueue(remaining);
@@ -121,34 +137,32 @@ async function flushQueue() {
     showToast("✅ تمت مزامنة إنجازك المحفوظ محليًا");
   }
 }
+
 window.addEventListener("online", flushQueue);
 setInterval(flushQueue, CONFIG.SYNC_RETRY_INTERVAL_MS);
 
-/* ================== 5) الشخصية الكرتونية الإنمي (Mascot) ================== */
+/* ================== 5) الشخصية الكرتونية (Mascot) ================== */
+
 const Mascot = {
-  el: null, pupilL: null, pupilR: null,
-  eyesNeutral: null, eyesHappy: null,
-  mouthNeutral: null, mouthHappy: null,
-  speechBubble: null,
-  eyeLCenter: { x: 77, y: 92 }, eyeRCenter: { x: 127, y: 92 },
-  maxOffset: 4,
-  
+  el: null, pupilL: null, pupilR: null, mouth: null,
+  eyeLCenter: { x: 78, y: 102 }, eyeRCenter: { x: 122, y: 102 },
+  maxOffset: 3.4,
+
   init() {
     this.el = document.getElementById("mascotSvg");
     this.pupilL = document.getElementById("pupilL");
     this.pupilR = document.getElementById("pupilR");
-    this.eyesNeutral = document.getElementById("eyesNeutral");
-    this.eyesHappy = document.getElementById("eyesHappy");
-    this.mouthNeutral = document.getElementById("mouthNeutral");
-    this.mouthHappy = document.getElementById("mouthHappy");
-    this.speechBubble = document.getElementById("speechBubble");
+    this.mouth = document.getElementById("mascotMouth");
   },
 
+  // يحرك بؤبؤ العين نحو نقطة (clientX/clientY) بشكل ديناميكي محسوب
   lookAt(clientX, clientY) {
-    if (!this.el || !this.pupilL || !this.pupilR) return;
+    if (!this.el) return;
     const rect = this.el.getBoundingClientRect();
+    // موقع المؤشر نسبيًا داخل الـ SVG (بمقياس viewBox 200x200)
     const relX = ((clientX - rect.left) / rect.width) * 200;
     const relY = ((clientY - rect.top) / rect.height) * 200;
+
     [ ["pupilL", this.eyeLCenter], ["pupilR", this.eyeRCenter] ].forEach(([key, center]) => {
       const dx = relX - center.x;
       const dy = relY - center.y;
@@ -161,38 +175,34 @@ const Mascot = {
   },
 
   resetLook() {
-    if (this.pupilL) this.pupilL.setAttribute("transform", "translate(0,0)");
-    if (this.pupilR) this.pupilR.setAttribute("transform", "translate(0,0)");
+    this.pupilL.setAttribute("transform", "translate(0,0)");
+    this.pupilR.setAttribute("transform", "translate(0,0)");
   },
 
-  happy(studentName) {
-    if (this.eyesNeutral) this.eyesNeutral.classList.add("hidden-feature");
-    if (this.eyesHappy) this.eyesHappy.classList.remove("hidden-feature");
-    if (this.mouthNeutral) this.mouthNeutral.classList.add("hidden-feature");
-    if (this.mouthHappy) this.mouthHappy.classList.remove("hidden-feature");
-    if (this.speechBubble && studentName) {
-      this.speechBubble.textContent = `أهلاً بك يا ${studentName}! جاهز لإنجاز مهامك اليوم؟ اضغط ابدأ 🚀`;
-    }
+  happy() {
+    this.mouth.setAttribute("d", "M86 121 Q100 140 114 121 Q100 132 86 121 Z");
+    this.mouth.setAttribute("fill", "#B8654F");
+    this.el.classList.remove("mascot-happy-jump");
+    void this.el.offsetWidth; // إعادة تشغيل الأنيميشن
+    this.el.classList.add("mascot-happy-jump");
   },
 
   confused() {
-    this.neutral();
-    if (this.speechBubble) this.speechBubble.textContent = "عذراً، حدث خطأ ما! تحقق من الاتصال بالحاسوب/الهاتف.";
+    this.mouth.setAttribute("d", "M92 127 Q100 122 108 127");
+    this.mouth.setAttribute("fill", "none");
+    this.resetLook();
   },
 
   neutral() {
-    if (this.eyesNeutral) this.eyesNeutral.classList.remove("hidden-feature");
-    if (this.eyesHappy) this.eyesHappy.classList.add("hidden-feature");
-    if (this.mouthNeutral) this.mouthNeutral.classList.remove("hidden-feature");
-    if (this.mouthHappy) this.mouthHappy.classList.add("hidden-feature");
-    if (this.speechBubble) this.speechBubble.textContent = "مرحباً بك! اختر اسمك لنبدأ رحلة الإنجاز اليومية ✨";
-  }
+    this.mouth.setAttribute("d", "M90 123 Q100 129 110 123");
+    this.mouth.setAttribute("fill", "none");
+  },
 };
 
 /* ================== 6) الكونفيتي ================== */
+
 function fireConfetti(count = 26) {
   const layer = document.getElementById("confettiLayer");
-  if (!layer) return;
   const colors = ["#4FB6E8", "#5FD3A3", "#FFC94A", "#FF9B6A", "#FF7A7A"];
   for (let i = 0; i < count; i++) {
     const c = document.createElement("div");
@@ -210,46 +220,49 @@ function fireConfetti(count = 26) {
 }
 
 /* ================== 7) حالة التطبيق ================== */
+
 const State = {
   student: null,
-  today: { wird: false, tuhfa: false, irab: false, submitted: false },
-  history: [],
+  today: { wird: false, tuhfa: false, irab: false },
+  history: [], // [{date, wird, tuhfa, irab}]
   streak: 0,
-  isSubmittedToday: false, // للتحقق من قفل اليوم
-  justSubmitted: false     // true فقط خلال نفس الجلسة التي تم فيها التأكيد للتو
+  confirmed: false, // هل أكّد التلميذ واجباته لهذا اليوم؟ (بعد التأكيد لا يمكن التعديل)
 };
+
 const STUDENT_KEY = "rq_selected_student_v1";
 
-function getLockStorageKey(name) {
-  return `rq_lock_${name}_${todayStr()}`;
-}
+/* ================== 8) تهيئة شاشة الترحيب ================== */
 
-/* ================== 8) تهيئة شاشة الترحيب وتوجيهات الجهاز ================== */
 async function initWelcomeScreen() {
   Mascot.init();
-  initDeviceInstructions();
-  
+
   const select = document.getElementById("studentSelect");
   const startBtn = document.getElementById("startBtn");
   const wrap = document.getElementById("selectWrap");
 
-  wrap.addEventListener("mousemove", (e) => Mascot.lookAt(e.clientX, e.clientY));
-  wrap.addEventListener("mouseleave", () => Mascot.resetLook());
-  wrap.addEventListener("touchstart", (e) => {
-    const t = e.touches[0];
-    if (t) Mascot.lookAt(t.clientX, t.clientY);
-  }, { passive: true });
+  // تفريق سلوك الشخصية بين الحاسوب (تتبع الماوس بشكل مستمر) والهاتف (تفاعل عند اللمس)
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+  if (!isTouchDevice) {
+    // على الحاسوب: العينان تتبعان حركة المؤشر خطوة بخطوة
+    wrap.addEventListener("mousemove", (e) => Mascot.lookAt(e.clientX, e.clientY));
+    wrap.addEventListener("mouseleave", () => Mascot.resetLook());
+  } else {
+    // على الهاتف: تنظر الشخصية نحو موضع اللمس ثم تعود لوضعها الطبيعي
+    wrap.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      if (t) Mascot.lookAt(t.clientX, t.clientY);
+    }, { passive: true });
+    wrap.addEventListener("touchend", () => Mascot.resetLook());
+  }
 
   select.addEventListener("change", () => {
     if (select.value) {
       startBtn.disabled = false;
       startBtn.classList.add("active");
-      Mascot.happy(select.value);
-      fireConfetti(18); // زينة احتفال خفيفة عند اختيار الاسم
+      Mascot.happy();
     } else {
       startBtn.disabled = true;
       startBtn.classList.remove("active");
-      Mascot.neutral();
     }
   });
 
@@ -263,7 +276,6 @@ async function initWelcomeScreen() {
   document.getElementById("changeStudentBtn")?.addEventListener("click", () => {
     localStorage.removeItem(STUDENT_KEY);
     State.student = null;
-    Mascot.neutral();
     setScreen("screen-welcome");
   });
 
@@ -271,32 +283,12 @@ async function initWelcomeScreen() {
     btn.addEventListener("click", loadNamesList);
   });
 
-  document.getElementById("closeSuccessModalBtn")?.addEventListener("click", () => {
-    document.getElementById("successModal").classList.add("hidden");
-    // بعد إغلاق رسالة التهنئة، نعود مباشرة إلى الصفحة الرئيسية
-    Mascot.neutral();
-    setScreen("screen-welcome");
-  });
-
   await loadNamesList();
 
+  // إن كان هناك تلميذ محفوظ مسبقًا في هذا الجهاز، ندخل مباشرة لصفحة مهامه
   const savedStudent = localStorage.getItem(STUDENT_KEY);
   if (savedStudent) {
     enterStudentFlow(savedStudent);
-  }
-}
-
-function initDeviceInstructions() {
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-                || window.innerWidth <= 768;
-  const desk = document.getElementById("instructionsDesktop");
-  const mob = document.getElementById("instructionsMobile");
-  if (isMobile) {
-    if (desk) desk.classList.add("hidden-feature");
-    if (mob) mob.classList.remove("hidden-feature");
-  } else {
-    if (desk) desk.classList.remove("hidden-feature");
-    if (mob) mob.classList.add("hidden-feature");
   }
 }
 
@@ -317,8 +309,13 @@ async function loadNamesList() {
     select.disabled = false;
     setScreen("screen-welcome");
   } catch (err) {
-    setScreen("screen-error-offline");
-    Mascot.confused();
+    if (!navigator.onLine || (err && err.offline)) {
+      setScreen("screen-error-offline");
+    } else {
+      setScreen("screen-error-offline"); // فشل الاتصال بالشيت نعامله كخطأ اتصال أيضًا
+    }
+    Mascot.init();
+    Mascot.confused && Mascot.confused();
   }
 }
 
@@ -329,34 +326,26 @@ function escapeHtml(s) {
 }
 
 /* ================== 9) شاشة المهام اليومية ================== */
+
 async function enterStudentFlow(name) {
   State.student = name;
-  State.justSubmitted = false; 
   setScreen("screen-loading");
   document.getElementById("studentHello").textContent = `أهلاً يا ${name} 🌟`;
 
-  const isLockedLocally = localStorage.getItem(getLockStorageKey(name)) === "true";
-
   try {
-    await loadTodayState();
-    await loadHistoryState();
-
-    const hasAnyDone = State.today.wird || State.today.tuhfa || State.today.irab;
-    const hasSubmittedFlag = State.today.submitted === true;
-    State.isSubmittedToday = hasSubmittedFlag || hasAnyDone || isLockedLocally;
-
+    await Promise.all([loadTodayState(), loadHistoryState()]);
     renderTasksScreen();
     setScreen("screen-tasks");
     bindTaskCards();
     await flushQueue();
   } catch (err) {
-    const cachedToday = getLocalTodayCache(name);
-    if (cachedToday) {
-      State.today = cachedToday;
+    // في حال تعذّر الجلب، نحاول الاعتماد على أي نسخة محلية محفوظة كحد أدنى
+    const cached = getLocalTodayCache(name);
+    if (cached) {
+      const { confirmed, ...todayVals } = cached;
+      State.today = todayVals;
+      State.confirmed = !!confirmed;
       State.history = [];
-      State.isSubmittedToday = isLockedLocally || cachedToday.submitted === true ||
-        cachedToday.wird || cachedToday.tuhfa || cachedToday.irab;
-      computeStreak(); 
       renderTasksScreen();
       setScreen("screen-tasks");
       bindTaskCards();
@@ -372,8 +361,9 @@ function getLocalTodayCache(name) {
   try { return JSON.parse(localStorage.getItem(localTodayCacheKey(name))); }
   catch { return null; }
 }
-function setLocalTodayCache(name, obj) {
-  localStorage.setItem(localTodayCacheKey(name), JSON.stringify(obj));
+// نخزّن قيم المهام مع حالة "مؤكَّد" في نفس السجل المحلي حتى نمنع التعديل بعد إغلاق التطبيق وإعادة فتحه
+function setLocalTodayCache(name, todayObj, confirmed) {
+  localStorage.setItem(localTodayCacheKey(name), JSON.stringify({ ...todayObj, confirmed: !!confirmed }));
 }
 
 async function loadTodayState() {
@@ -382,18 +372,19 @@ async function loadTodayState() {
     wird: !!data.wird,
     tuhfa: !!data.tuhfa,
     irab: !!data.irab,
-    submitted: !!data.submitted,
   };
-  setLocalTodayCache(State.student, State.today);
+  State.confirmed = !!data.confirmed;
+  setLocalTodayCache(State.student, State.today, State.confirmed);
 }
 
 async function loadHistoryState() {
   const data = await apiGet("getHistory", { student: State.student, days: CONFIG.HISTORY_DAYS });
-  State.history = (data.history || []).map(h => ({ ...h, date: normalizeDateStr(h.date) }));
+  State.history = data.history || [];
   computeStreak();
 }
 
 function computeStreak() {
+  // نحسب أيام متتالية (بما فيها اليوم) أُنجزت فيها كل المهام الثلاث
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
   const todayAll = State.today.wird && State.today.tuhfa && State.today.irab;
@@ -412,49 +403,15 @@ function computeStreak() {
 
 function renderTasksScreen() {
   document.getElementById("streakCount").textContent = State.streak;
-  
-  const confirmBtn = document.getElementById("confirmTasksBtn");
-  const alreadyBanner = document.getElementById("alreadySubmittedBanner");
-
-  const showAlreadyBanner = State.isSubmittedToday && !State.justSubmitted;
-
-  if (showAlreadyBanner) {
-    if (alreadyBanner) alreadyBanner.classList.remove("hidden");
-  } else {
-    if (alreadyBanner) alreadyBanner.classList.add("hidden");
-  }
-
-  if (State.isSubmittedToday) {
-    if (confirmBtn) {
-      confirmBtn.disabled = true;
-      confirmBtn.style.display = "none";
-    }
-  } else {
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.style.display = "block";
-    }
-  }
 
   TASKS.forEach(t => {
     const card = document.querySelector(`.task-card[data-task="${t.key}"]`);
-    if (!card) return;
     const check = card.querySelector("[data-check]");
     const done = !!State.today[t.key];
-    
     card.classList.toggle("done", done);
-    card.classList.toggle("disabled-card", State.isSubmittedToday);
-
-    if (State.isSubmittedToday) {
-      check.classList.remove("checked");
-      check.classList.add("readonly");
-      check.classList.toggle("missed-badge", !done);
-      check.textContent = done ? "✅" : "➖";
-    } else {
-      check.classList.remove("readonly", "missed-badge");
-      check.classList.toggle("checked", done);
-      check.textContent = done ? "✓" : "";
-    }
+    card.classList.toggle("locked", State.confirmed);
+    check.classList.toggle("checked", done);
+    check.textContent = done ? "✓" : "";
   });
 
   const doneCount = TASKS.filter(t => State.today[t.key]).length;
@@ -462,18 +419,35 @@ function renderTasksScreen() {
     dot.classList.toggle("done", i < doneCount);
   });
 
+  const confirmBtn = document.getElementById("confirmBtn");
+  const lockedNotice = document.getElementById("lockedNotice");
+  const hintMsg = document.getElementById("celebrateAllMsg");
+
+  if (State.confirmed) {
+    // بعد التأكيد: لا يمكن التعديل ولا التأكيد مرة أخرى في نفس اليوم
+    confirmBtn.classList.add("hidden");
+    lockedNotice.classList.remove("hidden");
+    hintMsg.classList.add("hidden");
+  } else {
+    confirmBtn.classList.remove("hidden");
+    lockedNotice.classList.add("hidden");
+    hintMsg.classList.toggle("hidden", doneCount < 3);
+  }
+
   renderStarCalendar();
 }
 
 function renderStarCalendar() {
   const wrap = document.getElementById("starCalendar");
-  if (!wrap) return;
   wrap.innerHTML = "";
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
+
   const days = [];
   for (let i = CONFIG.HISTORY_DAYS - 1; i >= 0; i--) days.push(dateStrDaysAgo(i));
+
   const weekdayFmt = new Intl.DateTimeFormat("ar", { weekday: "short" });
+
   days.forEach(ds => {
     const isToday = ds === todayStr();
     const rec = isToday ? State.today : map[ds];
@@ -494,74 +468,114 @@ function renderStarCalendar() {
 function bindTaskCards() {
   document.querySelectorAll(".task-card").forEach(card => {
     const key = card.dataset.task;
-    const newCard = card.cloneNode(true);
-    card.replaceWith(newCard);
-
-    newCard.addEventListener("click", () => {
-      if (State.isSubmittedToday) return; 
-      
-      State.today[key] = !State.today[key];
-      setLocalTodayCache(State.student, State.today);
-      renderTasksScreen();
-    });
+    const check = card.querySelector("[data-check]");
+    // نزيل أي مستمعين سابقين عبر استنساخ العنصر (لتفادي تكرار الربط عند إعادة الدخول)
+    const newCheck = check.cloneNode(true);
+    check.replaceWith(newCheck);
+    newCheck.addEventListener("click", () => onToggleTask(key, card, newCheck));
   });
 
-  const confirmBtn = document.getElementById("confirmTasksBtn");
-  if (confirmBtn) {
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    confirmBtn.replaceWith(newConfirmBtn);
-    newConfirmBtn.addEventListener("click", onConfirmAndSubmitAll);
-  }
+  const confirmBtn = document.getElementById("confirmBtn");
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.replaceWith(newConfirmBtn);
+  newConfirmBtn.addEventListener("click", onConfirmAssignments);
 }
 
-async function onConfirmAndSubmitAll() {
-  if (State.isSubmittedToday) return;
-
-  State.isSubmittedToday = true;
-  State.justSubmitted = true;
-  localStorage.setItem(getLockStorageKey(State.student), "true");
-  
-  computeStreak();
+// عند الضغط على مربع المهمة: هذا مجرد اختيار مؤقت (محلي) فقط،
+// لا يُرسَل أي شيء للسيرفر إلا بعد الضغط على زر "تأكيد وحفظ واجباتي"
+function onToggleTask(key, card, checkEl) {
+  if (State.confirmed) return; // مقفل بعد التأكيد، لا يمكن التعديل
+  const newValue = !State.today[key];
+  State.today[key] = newValue;
+  setLocalTodayCache(State.student, State.today, State.confirmed);
   renderTasksScreen();
-
-  const allCompleted = TASKS.every(t => State.today[t.key]);
-  fireConfetti(allCompleted ? 60 : 30);
-
-  const successModal = document.getElementById("successModal");
-  if (successModal) {
-    successModal.classList.remove("hidden");
-  }
-
-  syncSubmissionInBackground();
 }
 
-// ⚠️ هنا التغيير الجذري: إرسال جميع المهام في طلب واحد بدلاً من ثلاثة!
-async function syncSubmissionInBackground() {
+/* ================== 9ب) تأكيد الواجبات وحفظها ================== */
+
+async function onConfirmAssignments() {
+  if (State.confirmed) return;
+
+  const confirmBtn = document.getElementById("confirmBtn");
+  confirmBtn.disabled = true;
+  const originalLabel = confirmBtn.textContent;
+  confirmBtn.textContent = "جارٍ الحفظ…";
+
   const payload = {
-    action: "updateAllTasks",
-    classCode: CONFIG.CLASS_CODE,
     studentName: State.student,
-    tasks: {
-      wird: !!State.today.wird,
-      tuhfa: !!State.today.tuhfa,
-      irab: !!State.today.irab
-    },
-    clientTimestamp: new Date().toISOString()
+    wird: State.today.wird,
+    tuhfa: State.today.tuhfa,
+    irab: State.today.irab,
+    date: todayStr(),
+    clientTimestamp: new Date().toISOString(),
   };
 
   try {
     if (!navigator.onLine) throw new Error("offline");
-    await apiPost(payload);
+    const res = await apiPost({ action: "confirmAssignments", classCode: CONFIG.CLASS_CODE, ...payload });
+    if (res && res.alreadyConfirmed) {
+      // تم التأكيد مسبقًا (مثلاً من جهاز آخر) — نقفل الواجهة دون احتفال جديد
+      State.confirmed = true;
+      setLocalTodayCache(State.student, State.today, true);
+      renderTasksScreen();
+      showToast("لقد قمت بتسجيل واجباتك مسبقًا اليوم ✅");
+    } else {
+      handleConfirmSuccess(false);
+    }
   } catch (e) {
-    enqueueUpdate(payload);
+    // فشل الإرسال (لا اتصال): نحفظ طلب التأكيد في قائمة الانتظار ونقفل الواجهة محليًا بتفاؤل
+    enqueueUpdate({ ...payload, __confirm: true });
+    handleConfirmSuccess(true);
+    showToast("💾 لا يوجد اتصال، سيتم إرسال تأكيدك تلقائيًا عند عودة الاتصال");
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = originalLabel;
   }
 }
 
+function handleConfirmSuccess(offline) {
+  State.confirmed = true;
+  setLocalTodayCache(State.student, State.today, true);
+
+  // نضيف يوم اليوم إلى السجل المحلي فورًا حتى يُحتسب في الـ Streak دون انتظار إعادة تحميل
+  const idx = State.history.findIndex(h => h.date === todayStr());
+  const todayRecord = { date: todayStr(), ...State.today };
+  if (idx >= 0) State.history[idx] = todayRecord;
+  else State.history.push(todayRecord);
+
+  computeStreak();
+  renderTasksScreen();
+
+  if (!offline) fireConfetti(60);
+  showCelebration();
+}
+
+function showCelebration() {
+  const doneCount = TASKS.filter(t => State.today[t.key]).length;
+  const stars = "⭐".repeat(doneCount) + "☆".repeat(3 - doneCount);
+  document.getElementById("celebrationStars").textContent = stars;
+
+  const title = document.getElementById("celebrationTitle");
+  const text = document.getElementById("celebrationText");
+  if (doneCount === 3) {
+    title.textContent = "ما شاء الله! 🎉";
+    text.textContent = "أنجزت كل واجباتك اليوم، أحسنت يا بطل! 🌟";
+  } else if (doneCount > 0) {
+    title.textContent = "أحسنت! 👏";
+    text.textContent = "لقد سُجّل إنجازك لهذا اليوم، واصل هكذا غدًا!";
+  } else {
+    title.textContent = "تم التسجيل";
+    text.textContent = "سُجّل يومك، حاول إنجاز مهامك غدًا بإذن الله 🌱";
+  }
+  document.getElementById("celebrationOverlay").classList.remove("hidden");
+}
+
 /* ================== 10) واجهة الأستاذ ================== */
+
 const Teacher = {
   loggedIn: false,
-  records: [],
-  students: [],
+  records: [],   // كل السجلات من getRecords
+  students: [],  // كل الأسماء
   period: "today",
   sortKey: "name",
   sortDir: "asc",
@@ -596,7 +610,6 @@ function openTeacherLogin() {
   document.getElementById("teacherLoginError").textContent = "";
   document.getElementById("teacherPassInput").focus();
 }
-
 function closeTeacherLogin() {
   document.getElementById("teacherLoginModal").classList.add("hidden");
 }
@@ -618,7 +631,7 @@ async function openTeacherDashboard() {
   document.getElementById("leaderboardWrap").innerHTML = `<div class="empty-note">جارٍ التحميل…</div>`;
   try {
     const data = await apiGet("getRecords", { classCode: CONFIG.CLASS_CODE });
-    Teacher.records = (data.records || []).map(r => ({ ...r, date: normalizeDateStr(r.date) }));
+    Teacher.records = data.records || [];
     Teacher.students = data.students || [];
     renderLeaderboard();
     renderChart();
@@ -633,7 +646,7 @@ function filteredRecordsForPeriod() {
   return Teacher.records.filter(r => {
     if (Teacher.period === "today") return r.date === today;
     if (Teacher.period === "week") return r.date >= weekAgo && r.date <= today;
-    return true;
+    return true; // all
   });
 }
 
@@ -652,6 +665,7 @@ function buildLeaderboardRows() {
     if (!row.lastDate || r.date > row.lastDate) row.lastDate = r.date;
   });
 
+  // آخر يوم أُنجزت فيه أي مهمة (من كل السجلات وليس فقط الفترة) لتحديد "لم ينجز منذ 3 أيام"
   const lastActiveAll = {};
   Teacher.records.forEach(r => {
     if (r.wird || r.tuhfa || r.irab) {
@@ -677,6 +691,7 @@ function buildLeaderboardRows() {
 
   const search = (document.getElementById("dashSearch").value || "").trim();
   const filtered = search ? rows.filter(r => r.name.includes(search)) : rows;
+
   filtered.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ar"));
   return filtered;
 }
@@ -727,7 +742,7 @@ function exportCsv() {
   rows.forEach(r => {
     lines.push([r.name, r.wird, r.tuhfa, r.irab, r.score].join(","));
   });
-  const csv = "\uFEFF" + lines.join("\n");
+  const csv = "\uFEFF" + lines.join("\n"); // BOM لدعم العربية في Excel
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -740,8 +755,12 @@ function exportCsv() {
 }
 
 /* ================== 11) بدء التشغيل ================== */
+
 document.addEventListener("DOMContentLoaded", () => {
   initWelcomeScreen();
   initTeacherUI();
+  document.getElementById("celebrationCloseBtn").addEventListener("click", () => {
+    document.getElementById("celebrationOverlay").classList.add("hidden");
+  });
   flushQueue();
 });
