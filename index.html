@@ -1,340 +1,338 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>رفقاء القرآن والنحو</title>
-  <meta name="description" content="نظام تتبع تفاعلي للمهام اليومية: حفظ الورد، تحفة الأطفال، وإعراب الآجرومية">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --sky:#4FB6E8;
-      --sky-dark:#2C86B8;
-      --sky-pale:#E6F6FC;
-      --green:#5FD3A3;
-      --green-dark:#2E9E76;
-      --yellow:#FFC94A;
-      --orange:#FF9B6A;
-      --coral:#FF7A7A;
-      --ink:#1F3B4D;
-      --ink-soft:#5A7488;
-      --bg:#F3FBFD;
-      --card:#FFFFFF;
-      --shadow: 0 10px 25px -8px rgba(31,59,77,.18);
-      --radius-lg:28px;
-      --radius-md:18px;
-      --radius-sm:12px;
-      --font-display:'Cairo',sans-serif;
-      --font-body:'Tajawal',sans-serif;
-    }
-    *{box-sizing:border-box;}
-    html,body{margin:0;padding:0;}
-    body{
-      font-family:var(--font-body);
-      background:
-        radial-gradient(circle at 8% 12%, rgba(95,211,163,.18), transparent 40%),
-        radial-gradient(circle at 92% 18%, rgba(79,182,232,.20), transparent 45%),
-        var(--bg);
-      color:var(--ink);
-      min-height:100vh;
-      overflow-x:hidden;
-    }
-    h1,h2,h3,.brand-title{font-family:var(--font-display);}
-    button{font-family:var(--font-body);cursor:pointer;}
-    .hidden{display:none !important;}
-    a{color:inherit;}
-    /* ===== Topbar ===== */
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-space-between;
-      padding:16px 20px;
-      max-width:980px;
-      margin:0 auto;
-    }
-    .teacher-btn{
-      background:var(--card);
-      border:2px solid var(--sky-pale);
-      color:var(--sky-dark);
-      font-weight:700;
-      font-size:.9rem;
-      padding:10px 16px;
-      border-radius:999px;
-      box-shadow:var(--shadow);
-      transition:transform .15s ease, box-shadow .15s ease;
-    }
-    .teacher-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px -10px rgba(31,59,77,.25);}
-    .brand{text-align:left;}
-    .brand-title{font-size:1.25rem;font-weight:800;color:var(--ink);}
-    .brand-sub{display:block;font-size:.8rem;color:var(--ink-soft);margin-top:2px;}
-    main{max-width:640px;margin:0 auto;padding:10px 20px 60px;}
-    /* ===== Screens ===== */
-    .screen{animation:fadeIn .4s ease;}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-    /* ===== Welcome screen ===== */
-    .welcome-card{
-      background:var(--card);
-      border-radius:var(--radius-lg);
-      padding:34px 26px 30px;
-      box-shadow:var(--shadow);
-      text-align:center;
-      margin-top:10px;
-    }
-    .welcome-hello{font-size:1.4rem;font-weight:800;margin:6px 0 18px;}
-    .mascot-wrap{width:180px;margin:0 auto 14px;position:relative;}
-    .speech-bubble{
-      background:var(--sky-pale);
-      border:2px solid var(--sky);
-      border-radius:var(--radius-md);
-      padding:10px 14px;
-      font-size:.85rem;
-      font-weight:700;
-      color:var(--ink);
-      margin-bottom:12px;
-      position:relative;
-      animation:popIn .3s ease;
-    }
-    .speech-bubble::after{
-      content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
-      border-width:8px 8px 0;border-style:solid;border-color:var(--sky) transparent;display:block;width:0;
-    }
-    @keyframes popIn{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
-    .hidden-feature{display:none;}
-    /* Device Instructions Box */
-    .instructions-box{
-      background:var(--sky-pale);
-      border-radius:var(--radius-md);
-      padding:14px 18px;
-      margin:16px 0;
-      text-align:right;
-      font-size:.88rem;
-    }
-    .instructions-box h3{margin:0 0 8px;font-size:.95rem;color:var(--sky-dark);}
-    .instructions-box ol{margin:0;padding-right:20px;}
-    .instructions-box li{margin-bottom:4px;}
-    
-    /* dropdown */
-    .field-label{display:block;font-weight:700;color:var(--ink-soft);margin-bottom:8px;font-size:.9rem;}
-    .select-wrap{position:relative;margin-bottom:18px;}
-    select#studentSelect{
-      appearance:none;-webkit-appearance:none;-moz-appearance:none;
-      width:100%;
-      padding:16px 46px 16px 18px;
-      font-size:1.05rem;
-      font-family:var(--font-body);
-      font-weight:700;
-      color:var(--ink);
-      background:var(--sky-pale);
-      border:3px solid transparent;
-      border-radius:var(--radius-md);
-      outline:none;
-      transition:border-color .15s ease, background .15s ease;
-    }
-    select#studentSelect:focus{border-color:var(--sky);background:#fff;}
-    select#studentSelect:disabled{opacity:.6;}
-    .select-wrap::after{
-      content:"▾";
-      position:absolute;left:18px;top:50%;transform:translateY(-50%);
-      color:var(--sky-dark);font-size:1.1rem;pointer-events:none;
-    }
-    .select-wrap.dir-ltr::after{content:none;}
-    .btn-primary{
-      display:inline-flex;align-items:center;gap:8px;justify-content:center;
-      width:100%;
-      padding:16px 20px;
-      font-size:1.1rem;font-weight:800;
-      color:#fff;
-      background:#c9d3d8;
-      border:none;border-radius:999px;
-      transition:transform .15s ease, box-shadow .2s ease, background .3s ease;
-      box-shadow:none;
-    }
-    .btn-primary.active{
-      background:linear-gradient(135deg,var(--green),var(--sky));
-      box-shadow:0 12px 26px -8px rgba(46,158,118,.55);
-    }
-    .btn-primary.active:hover{transform:translateY(-2px) scale(1.01);}
-    .btn-primary:disabled{cursor:not-allowed;}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>رفقاء القرآن والنحو</title>
+<meta name="description" content="نظام تتبع تفاعلي للمهام اليومية: حفظ الورد، تحفة الأطفال، وإعراب الآجرومية">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#4FB6E8;
+    --sky-dark:#2C86B8;
+    --sky-pale:#E6F6FC;
+    --green:#5FD3A3;
+    --green-dark:#2E9E76;
+    --yellow:#FFC94A;
+    --orange:#FF9B6A;
+    --coral:#FF7A7A;
+    --ink:#1F3B4D;
+    --ink-soft:#5A7488;
+    --bg:#F3FBFD;
+    --card:#FFFFFF;
+    --shadow: 0 10px 25px -8px rgba(31,59,77,.18);
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --font-display:'Cairo',sans-serif;
+    --font-body:'Tajawal',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 8% 12%, rgba(95,211,163,.18), transparent 40%),
+      radial-gradient(circle at 92% 18%, rgba(79,182,232,.20), transparent 45%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.brand-title{font-family:var(--font-display);}
+  button{font-family:var(--font-body);cursor:pointer;}
+  .hidden{display:none !important;}
+  a{color:inherit;}
 
-    /* ===== Loading / Error ===== */
-    .state-card{
-      background:var(--card);border-radius:var(--radius-lg);
-      padding:40px 26px;text-align:center;box-shadow:var(--shadow);margin-top:10px;
-    }
-    .spinner{
-      width:52px;height:52px;margin:0 auto 18px;
-      border:6px solid var(--sky-pale);
-      border-top-color:var(--sky);
-      border-radius:50%;
-      animation:spin .8s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg);}}
-    .state-title{font-weight:800;font-size:1.05rem;margin-bottom:6px;}
-    .state-sub{color:var(--ink-soft);font-size:.9rem;}
-    .state-emoji{font-size:2.4rem;margin-bottom:10px;}
-    .btn-retry{
-      margin-top:18px;background:var(--sky-pale);color:var(--sky-dark);
-      border:none;border-radius:999px;padding:10px 22px;font-weight:800;
-    }
-    /* ===== Tasks screen ===== */
-    .tasks-header{
-      display:flex;align-items:center;justify-content:space-between;
-      background:var(--card);border-radius:var(--radius-lg);
-      padding:18px 22px;box-shadow:var(--shadow);margin-top:6px;
-    }
-    .student-hello{font-weight:800;font-size:1.05rem;}
-    .change-student{font-size:.78rem;color:var(--sky-dark);font-weight:700;background:none;border:none;padding:2px;margin-top:4px;}
-    .streak-pill{
-      display:flex;align-items:center;gap:6px;
-      background:linear-gradient(135deg,#FFE3B0,var(--yellow));
-      color:#8a5a00;font-weight:800;font-size:.95rem;
-      padding:9px 16px;border-radius:999px;
-    }
-    .alert-banner{
-      background:#FFF3F0;border:2px solid var(--coral);color:var(--ink);
-      padding:12px 16px;border-radius:var(--radius-md);margin:14px 0 6px;
-      font-size:.88rem;font-weight:700;text-align:center;
-    }
-    .progress-row{display:flex;gap:10px;justify-content:center;margin:20px 0;}
-    .progress-dot{
-      width:34px;height:34px;border-radius:50%;
-      background:#E4EEF2;color:#9fb3bd;
-      display:flex;align-items:center;justify-content:center;
-      font-size:1.1rem;transition:all .3s ease;
-    }
-    .progress-dot.done{
-      background:linear-gradient(135deg,var(--green),var(--sky));
-      color:#fff;transform:scale(1.08);
-      box-shadow:0 8px 16px -6px rgba(46,158,118,.5);
-    }
-    .task-card{
-      background:var(--card);border-radius:var(--radius-md);
-      padding:18px 18px;box-shadow:var(--shadow);
-      display:flex;align-items:center;gap:14px;
-      margin-bottom:14px;
-      border:2px solid transparent;
-      transition:border-color .25s ease, transform .15s ease;
-      cursor:pointer;
-    }
-    .task-card.disabled-card{cursor:not-allowed;opacity:.85;}
-    .task-card.done{border-color:var(--green);background:linear-gradient(0deg,#F1FBF6,#fff);}
-    .task-emoji{font-size:1.7rem;width:44px;text-align:center;}
-    .task-info{flex:1;}
-    .task-title{font-weight:800;font-size:1rem;}
-    .task-sub{color:var(--ink-soft);font-size:.8rem;margin-top:2px;}
-    .task-check{
-      width:38px;height:38px;border-radius:12px;
-      border:3px solid #D7E4E9;background:#fff;
-      display:flex;align-items:center;justify-content:center;
-      font-size:1.1rem;color:#fff;flex-shrink:0;
-      transition:all .2s ease;
-    }
-    .task-check.checked{background:var(--green);border-color:var(--green-dark);}
-    /* شارة العرض فقط (بعد التأكيد) بدل مربع الاختيار التفاعلي */
-    .task-check.readonly{
-      border:none;background:none;width:auto;height:auto;
-      font-size:1.4rem;
-    }
-    .task-check.readonly.missed-badge{opacity:.4;filter:grayscale(1);}
-    .action-container{margin:20px 0;}
-    .btn-confirm{
-      width:100%;padding:16px;border-radius:999px;border:none;
-      background:linear-gradient(135deg,var(--green),var(--sky));
-      color:#fff;font-weight:800;font-size:1.1rem;box-shadow:0 10px 20px -6px rgba(46,158,118,.4);
-      transition:transform .15s ease;
-    }
-    .btn-confirm:hover{transform:translateY(-2px);}
-    .btn-confirm:disabled{background:#c9d3d8;box-shadow:none;cursor:not-allowed;}
-    
-    .calendar-title{font-weight:800;margin:26px 0 10px;font-size:.95rem;color:var(--ink-soft);}
-    .star-calendar{display:flex;gap:8px;justify-content:space-between;overflow-x:auto;padding-bottom:4px;}
-    .cal-day{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:34px;}
-    .cal-dot{width:22px;height:22px;border-radius:50%;background:#D7E4E9;}
-    .cal-dot.full{background:var(--green);}
-    .cal-dot.partial{background:var(--yellow);}
-    .cal-dot.empty{background:#D7E4E9;}
-    .cal-label{font-size:.65rem;color:var(--ink-soft);}
+  /* ===== Topbar ===== */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    max-width:980px;
+    margin:0 auto;
+  }
+  .teacher-btn{
+    background:var(--card);
+    border:2px solid var(--sky-pale);
+    color:var(--sky-dark);
+    font-weight:700;
+    font-size:.9rem;
+    padding:10px 16px;
+    border-radius:999px;
+    box-shadow:var(--shadow);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .teacher-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px -10px rgba(31,59,77,.25);}
+  .brand{text-align:left;}
+  .brand-title{font-size:1.25rem;font-weight:800;color:var(--ink);}
+  .brand-sub{display:block;font-size:.8rem;color:var(--ink-soft);margin-top:2px;}
 
-    /* ===== Toast ===== */
-    #toast{
-      position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);
-      background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;
-      font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;
-      transition:all .3s ease;z-index:80;max-width:90vw;text-align:center;
-    }
-    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-    /* ===== Confetti ===== */
-    #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60;}
-    .confetto{position:absolute;top:-12px;border-radius:2px;animation:confettiFall linear forwards;}
-    @keyframes confettiFall{
-      to{transform:translateY(105vh) rotate(400deg);opacity:.9;}
-    }
-    /* ===== Modal (Teacher Login & Success Modal) ===== */
-    .modal-backdrop{
-      position:fixed;inset:0;background:rgba(20,40,50,.45);
-      display:flex;align-items:center;justify-content:center;z-index:70;padding:18px;
-    }
-    .modal-box{
-      background:#fff;border-radius:var(--radius-lg);padding:28px 24px;
-      width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;
-      animation:popIn .3s ease;
-    }
-    .modal-box h2{font-size:1.2rem;margin:10px 0 6px;}
-    .modal-box p{color:var(--ink-soft);font-size:.88rem;margin:0 0 18px;line-height:1.4;}
-    .modal-box input[type=password]{
-      width:100%;padding:13px 14px;border-radius:var(--radius-sm);
-      border:2px solid var(--sky-pale);font-size:1rem;text-align:center;
-      outline:none;margin-bottom:12px;
-    }
-    .modal-box input[type=password]:focus{border-color:var(--sky);}
-    .modal-actions{display:flex;gap:10px;}
-    .btn-sm{flex:1;padding:11px;border-radius:999px;border:none;font-weight:800;font-size:.88rem;}
-    .btn-sm.cancel{background:#EEF3F5;color:var(--ink-soft);}
-    .btn-sm.confirm{background:var(--sky);color:#fff;}
-    .modal-error{color:var(--coral);font-size:.8rem;min-height:18px;margin-top:-4px;margin-bottom:6px;}
-    .modal-emoji{font-size:3rem;}
+  main{max-width:640px;margin:0 auto;padding:10px 20px 60px;}
 
-    /* ===== Teacher dashboard ===== */
-    #teacherDashboard{position:fixed;inset:0;background:var(--bg);z-index:65;overflow-y:auto;}
-    .dash-wrap{max-width:920px;margin:0 auto;padding:18px 18px 60px;}
-    .dash-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-    .dash-title{font-weight:800;font-size:1.2rem;}
-    .btn-close-dash{background:#fff;border:2px solid var(--sky-pale);border-radius:999px;padding:9px 18px;font-weight:800;color:var(--sky-dark);}
-    .dash-toolbar{
-      display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-      background:#fff;border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);margin-bottom:16px;
-    }
-    .dash-toolbar input[type=search]{
-      flex:1;min-width:150px;padding:10px 14px;border-radius:999px;border:2px solid var(--sky-pale);outline:none;font-family:var(--font-body);
-    }
-    .seg-group{display:flex;background:var(--sky-pale);border-radius:999px;padding:4px;gap:2px;}
-    .seg-btn{border:none;background:none;padding:8px 14px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--sky-dark);}
-    .seg-btn.active{background:var(--sky);color:#fff;}
-    .btn-export{background:var(--green);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-weight:800;font-size:.85rem;}
-    .dash-grid{display:grid;grid-template-columns:1fr;gap:16px;}
-    @media(min-width:760px){.dash-grid{grid-template-columns:1.3fr 1fr;}}
-    .panel{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);}
-    .panel h3{margin:0 0 12px;font-size:.98rem;}
-    table.leaderboard{width:100%;border-collapse:collapse;font-size:.85rem;}
-    table.leaderboard th{text-align:right;color:var(--ink-soft);font-size:.75rem;padding:6px 8px;border-bottom:2px solid var(--sky-pale);cursor:pointer;user-select:none;}
-    table.leaderboard td{padding:8px;border-bottom:1px solid #F0F5F7;}
-    table.leaderboard tr.alert td{background:#FFF3F0;}
-    .rank-badge{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--sky-pale);color:var(--sky-dark);font-weight:800;font-size:.7rem;align-items:center;justify-content:center;}
-    .name-tag{font-weight:700;}
-    .alert-flag{color:var(--coral);font-size:.72rem;font-weight:800;}
-    .chart-bars{display:flex;gap:20px;align-items:flex-end;height:180px;padding-top:10px;}
-    .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
-    .chart-bar{width:100%;max-width:46px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--sky),var(--green));transition:height .6s ease;}
-    .chart-pct{font-size:.75rem;font-weight:800;margin-bottom:4px;}
-    .chart-label{font-size:.72rem;color:var(--ink-soft);margin-top:6px;text-align:center;}
-    .empty-note{color:var(--ink-soft);font-size:.85rem;text-align:center;padding:18px;}
-    footer.tiny-note{max-width:640px;margin:14px auto 0;text-align:center;color:var(--ink-soft);font-size:.72rem;opacity:.8;}
-  </style>
+  /* ===== Screens ===== */
+  .screen{animation:fadeIn .4s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ===== Welcome screen ===== */
+  .welcome-card{
+    background:var(--card);
+    border-radius:var(--radius-lg);
+    padding:34px 26px 30px;
+    box-shadow:var(--shadow);
+    text-align:center;
+    margin-top:10px;
+  }
+  .welcome-hello{font-size:1.4rem;font-weight:800;margin:6px 0 18px;}
+  .mascot-wrap{width:170px;margin:0 auto 14px;}
+
+  /* dropdown */
+  .field-label{display:block;font-weight:700;color:var(--ink-soft);margin-bottom:8px;font-size:.9rem;}
+  .select-wrap{position:relative;margin-bottom:22px;}
+  select#studentSelect{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    width:100%;
+    padding:16px 46px 16px 18px;
+    font-size:1.05rem;
+    font-family:var(--font-body);
+    font-weight:700;
+    color:var(--ink);
+    background:var(--sky-pale);
+    border:3px solid transparent;
+    border-radius:var(--radius-md);
+    outline:none;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  select#studentSelect:focus{border-color:var(--sky);background:#fff;}
+  select#studentSelect:disabled{opacity:.6;}
+  .select-wrap::after{
+    content:"▾";
+    position:absolute;left:18px;top:50%;transform:translateY(-50%);
+    color:var(--sky-dark);font-size:1.1rem;pointer-events:none;
+  }
+  .select-wrap.dir-ltr::after{content:none;}
+
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:8px;justify-content:center;
+    width:100%;
+    padding:16px 20px;
+    font-size:1.1rem;font-weight:800;
+    color:#fff;
+    background:#c9d3d8;
+    border:none;border-radius:999px;
+    transition:transform .15s ease, box-shadow .2s ease, background .3s ease;
+    box-shadow:none;
+  }
+  .btn-primary.active{
+    background:linear-gradient(135deg,var(--green),var(--sky));
+    box-shadow:0 12px 26px -8px rgba(46,158,118,.55);
+  }
+  .btn-primary.active:hover{transform:translateY(-2px) scale(1.01);}
+  .btn-primary:disabled{cursor:not-allowed;}
+
+  /* ===== Mascot SVG ===== */
+  .mascot-eye-pupil{transition:transform .05s linear;}
+  .mascot-happy-jump{animation:mascotJump .55s ease;}
+  @keyframes mascotJump{
+    0%{transform:translateY(0) rotate(0);}
+    30%{transform:translateY(-14px) rotate(-4deg);}
+    55%{transform:translateY(0) rotate(3deg);}
+    75%{transform:translateY(-6px) rotate(-2deg);}
+    100%{transform:translateY(0) rotate(0);}
+  }
+
+  /* ===== Loading / Error ===== */
+  .state-card{
+    background:var(--card);border-radius:var(--radius-lg);
+    padding:40px 26px;text-align:center;box-shadow:var(--shadow);margin-top:10px;
+  }
+  .spinner{
+    width:52px;height:52px;margin:0 auto 18px;
+    border:6px solid var(--sky-pale);
+    border-top-color:var(--sky);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .state-title{font-weight:800;font-size:1.05rem;margin-bottom:6px;}
+  .state-sub{color:var(--ink-soft);font-size:.9rem;}
+  .state-emoji{font-size:2.4rem;margin-bottom:10px;}
+  .btn-retry{
+    margin-top:18px;background:var(--sky-pale);color:var(--sky-dark);
+    border:none;border-radius:999px;padding:10px 22px;font-weight:800;
+  }
+
+  /* ===== Tasks screen ===== */
+  .tasks-header{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card);border-radius:var(--radius-lg);
+    padding:18px 22px;box-shadow:var(--shadow);margin-top:6px;
+  }
+  .student-hello{font-weight:800;font-size:1.05rem;}
+  .change-student{font-size:.78rem;color:var(--sky-dark);font-weight:700;background:none;border:none;padding:2px;margin-top:4px;}
+  .streak-pill{
+    display:flex;align-items:center;gap:6px;
+    background:linear-gradient(135deg,#FFE3B0,var(--yellow));
+    color:#8a5a00;font-weight:800;font-size:.95rem;
+    padding:9px 16px;border-radius:999px;
+  }
+
+  .progress-row{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+  .progress-dot{
+    width:34px;height:34px;border-radius:50%;
+    background:#E4EEF2;color:#9fb3bd;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;transition:all .3s ease;
+  }
+  .progress-dot.done{
+    background:linear-gradient(135deg,var(--green),var(--sky));
+    color:#fff;transform:scale(1.08);
+    box-shadow:0 8px 16px -6px rgba(46,158,118,.5);
+  }
+
+  .task-card{
+    background:var(--card);border-radius:var(--radius-md);
+    padding:18px 18px;box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:14px;
+    margin-bottom:14px;
+    border:2px solid transparent;
+    transition:border-color .25s ease, transform .15s ease;
+  }
+  .task-card.done{border-color:var(--green);background:linear-gradient(0deg,#F1FBF6,#fff);}
+  .task-emoji{font-size:1.7rem;width:44px;text-align:center;}
+  .task-info{flex:1;}
+  .task-title{font-weight:800;font-size:1rem;}
+  .task-sub{color:var(--ink-soft);font-size:.8rem;margin-top:2px;}
+  .task-check{
+    width:38px;height:38px;border-radius:12px;
+    border:3px solid #D7E4E9;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;color:#fff;flex-shrink:0;
+    transition:all .2s ease;
+  }
+  .task-check.checked{background:var(--green);border-color:var(--green-dark);}
+  .task-card.saving .task-check{opacity:.5;}
+
+  .celebrate-msg{
+    text-align:center;font-weight:800;color:var(--green-dark);
+    background:#EAFBF3;border-radius:var(--radius-md);
+    padding:14px;margin:6px 0 18px;font-size:.95rem;
+  }
+
+  /* ===== زر التأكيد وقفل اليوم ===== */
+  .confirm-btn{margin:8px 0 6px;}
+  .locked-notice{
+    text-align:center;font-weight:800;color:var(--green-dark);
+    background:#EAFBF3;border-radius:var(--radius-md);
+    padding:16px;margin:8px 0 6px;font-size:.95rem;
+    border:2px solid #CDEFDE;
+  }
+  .task-card.locked{opacity:.82;}
+  .task-card.locked .task-check{pointer-events:none;cursor:default;}
+
+  /* ===== نافذة الاحتفال ===== */
+  .celebration-box{max-width:340px;}
+  .celebration-emoji{font-size:3.2rem;margin-bottom:4px;animation:mascotJump .7s ease;}
+  .celebration-box h2{font-size:1.25rem;margin:4px 0 6px;}
+  .celebration-stars{font-size:1.9rem;letter-spacing:6px;margin:12px 0 20px;}
+
+  .calendar-title{font-weight:800;margin:26px 0 10px;font-size:.95rem;color:var(--ink-soft);}
+  .star-calendar{display:flex;gap:8px;justify-content:space-between;overflow-x:auto;padding-bottom:4px;}
+  .cal-day{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:34px;}
+  .cal-dot{width:22px;height:22px;border-radius:50%;background:#D7E4E9;}
+  .cal-dot.full{background:var(--green);}
+  .cal-dot.partial{background:var(--yellow);}
+  .cal-dot.empty{background:#D7E4E9;}
+  .cal-label{font-size:.65rem;color:var(--ink-soft);}
+
+  /* ===== Toast ===== */
+  #toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;
+    font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;
+    transition:all .3s ease;z-index:80;max-width:90vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ===== Confetti ===== */
+  #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60;}
+  .confetto{position:absolute;top:-12px;border-radius:2px;animation:confettiFall linear forwards;}
+  @keyframes confettiFall{
+    to{transform:translateY(105vh) rotate(400deg);opacity:.9;}
+  }
+
+  /* ===== Modal (teacher login) ===== */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,40,50,.45);
+    display:flex;align-items:center;justify-content:center;z-index:70;padding:18px;
+  }
+  .modal-box{
+    background:#fff;border-radius:var(--radius-lg);padding:28px 24px;
+    width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;
+  }
+  .modal-box h2{font-size:1.1rem;margin:0 0 6px;}
+  .modal-box p{color:var(--ink-soft);font-size:.85rem;margin:0 0 16px;}
+  .modal-box input[type=password]{
+    width:100%;padding:13px 14px;border-radius:var(--radius-sm);
+    border:2px solid var(--sky-pale);font-size:1rem;text-align:center;
+    outline:none;margin-bottom:12px;
+  }
+  .modal-box input[type=password]:focus{border-color:var(--sky);}
+  .modal-actions{display:flex;gap:10px;}
+  .btn-sm{flex:1;padding:11px;border-radius:999px;border:none;font-weight:800;font-size:.88rem;}
+  .btn-sm.cancel{background:#EEF3F5;color:var(--ink-soft);}
+  .btn-sm.confirm{background:var(--sky);color:#fff;}
+  .modal-error{color:var(--coral);font-size:.8rem;min-height:18px;margin-top:-4px;margin-bottom:6px;}
+
+  /* ===== Teacher dashboard ===== */
+  #teacherDashboard{position:fixed;inset:0;background:var(--bg);z-index:65;overflow-y:auto;}
+  .dash-wrap{max-width:920px;margin:0 auto;padding:18px 18px 60px;}
+  .dash-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .dash-title{font-weight:800;font-size:1.2rem;}
+  .btn-close-dash{background:#fff;border:2px solid var(--sky-pale);border-radius:999px;padding:9px 18px;font-weight:800;color:var(--sky-dark);}
+
+  .dash-toolbar{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    background:#fff;border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .dash-toolbar input[type=search]{
+    flex:1;min-width:150px;padding:10px 14px;border-radius:999px;border:2px solid var(--sky-pale);outline:none;font-family:var(--font-body);
+  }
+  .seg-group{display:flex;background:var(--sky-pale);border-radius:999px;padding:4px;gap:2px;}
+  .seg-btn{border:none;background:none;padding:8px 14px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--sky-dark);}
+  .seg-btn.active{background:var(--sky);color:#fff;}
+  .btn-export{background:var(--green);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-weight:800;font-size:.85rem;}
+
+  .dash-grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:760px){.dash-grid{grid-template-columns:1.3fr 1fr;}}
+  .panel{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);}
+  .panel h3{margin:0 0 12px;font-size:.98rem;}
+
+  table.leaderboard{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table.leaderboard th{text-align:right;color:var(--ink-soft);font-size:.75rem;padding:6px 8px;border-bottom:2px solid var(--sky-pale);cursor:pointer;user-select:none;}
+  table.leaderboard td{padding:8px;border-bottom:1px solid #F0F5F7;}
+  table.leaderboard tr.alert td{background:#FFF3F0;}
+  .rank-badge{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--sky-pale);color:var(--sky-dark);font-weight:800;font-size:.7rem;align-items:center;justify-content:center;}
+  .name-tag{font-weight:700;}
+  .alert-flag{color:var(--coral);font-size:.72rem;font-weight:800;}
+
+  .chart-bars{display:flex;gap:20px;align-items:flex-end;height:180px;padding-top:10px;}
+  .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .chart-bar{width:100%;max-width:46px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--sky),var(--green));transition:height .6s ease;}
+  .chart-pct{font-size:.75rem;font-weight:800;margin-bottom:4px;}
+  .chart-label{font-size:.72rem;color:var(--ink-soft);margin-top:6px;text-align:center;}
+
+  .empty-note{color:var(--ink-soft);font-size:.85rem;text-align:center;padding:18px;}
+
+  footer.tiny-note{max-width:640px;margin:14px auto 0;text-align:center;color:var(--ink-soft);font-size:.72rem;opacity:.8;}
+</style>
 </head>
 <body>
 <div id="app">
+
   <header class="topbar">
     <button id="teacherBtn" class="teacher-btn" type="button">🎓 الأستاذ</button>
     <div class="brand">
@@ -342,53 +340,78 @@
       <span class="brand-sub">تابع إنجازك اليومي بكل حماس ✨</span>
     </div>
   </header>
+
   <main>
+
     <!-- ===== شاشة الترحيب ===== -->
     <section id="screen-welcome" class="screen">
       <div class="welcome-card">
-        
-        <div id="speechBubble" class="speech-bubble">
-          مرحباً بك! اختر اسمك لنبدأ رحلة الإنجاز اليومية ✨
-        </div>
-
         <div class="mascot-wrap">
-          <!-- الشخصية الكرتونية الإنمي (Anime Mascot SVG) -->
+          <!-- الشخصية الكرتونية (Mascot) - نمط أنمي لطيف -->
           <svg id="mascotSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="100" cy="100" r="90" fill="#E6F6FC" />
-            <!-- الشعر الخلفي -->
-            <path d="M 40 100 Q 20 40 100 20 Q 180 40 160 100 Z" fill="#2C86B8"/>
-            <!-- الأذنان والوجه -->
-            <circle cx="55" cy="100" r="14" fill="#FFE1C2"/>
-            <circle cx="145" cy="100" r="14" fill="#FFE1C2"/>
-            <path d="M 50 100 Q 50 152 100 160 Q 150 152 150 100 Q 150 50 100 50 Q 50 50 50 100 Z" fill="#FFE1C2"/>
-            <!-- الخدود الوردي -->
-            <circle cx="72" cy="115" r="8" fill="#FF9B6A" opacity="0.5"/>
-            <circle cx="128" cy="115" r="8" fill="#FF9B6A" opacity="0.5"/>
-            
-            <!-- العيون الإنمي (المظهر العادي) -->
-            <g id="eyesNeutral">
-              <ellipse cx="75" cy="95" rx="9" ry="13" fill="#1F3B4D"/>
-              <circle class="mascot-eye-pupil" id="pupilL" cx="77" cy="92" r="3.5" fill="#ffffff"/>
-              <ellipse cx="125" cy="95" rx="9" ry="13" fill="#1F3B4D"/>
-              <circle class="mascot-eye-pupil" id="pupilR" cx="127" cy="92" r="3.5" fill="#ffffff"/>
+            <ellipse cx="100" cy="190" rx="50" ry="7" fill="#DCEFF5"/>
+
+            <!-- الجسم / الكتفان -->
+            <path d="M52 178 Q100 200 148 178 L140 138 Q100 154 60 138 Z" fill="#7FD9C4"/>
+
+            <!-- شعر خلفي (لإعطاء كثافة) -->
+            <path d="M34 96 Q28 34 100 22 Q172 34 166 96 Q166 55 100 50 Q34 55 34 96 Z" fill="#F6D896"/>
+
+            <!-- الرأس -->
+            <circle cx="100" cy="98" r="60" fill="#FFEFE1"/>
+            <!-- الأذنان -->
+            <circle cx="41" cy="98" r="10" fill="#FFEFE1"/>
+            <circle cx="159" cy="98" r="10" fill="#FFEFE1"/>
+
+            <!-- الوشاح الصوفي اللطيف -->
+            <path d="M48 146 Q100 168 152 146 L152 162 Q100 184 48 162 Z" fill="#6FC6E8"/>
+            <path d="M48 150 Q100 171 152 150" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".55"/>
+            <path d="M48 156 Q100 177 152 156" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".4"/>
+
+            <!-- الشعر الأمامي / الغرة بنمط الأنمي -->
+            <path d="M36 90
+                     Q38 40 100 30
+                     Q162 40 164 90
+                     Q150 66 128 76
+                     Q116 56 100 74
+                     Q84 56 72 76
+                     Q50 66 36 90 Z" fill="#F9DEA1"/>
+            <path d="M36 90 Q31 116 42 138 Q37 112 44 90 Z" fill="#F9DEA1"/>
+            <path d="M164 90 Q169 116 158 138 Q163 112 156 90 Z" fill="#F9DEA1"/>
+
+            <!-- الخدود -->
+            <ellipse id="cheekL" cx="61" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
+            <ellipse id="cheekR" cx="139" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
+
+            <!-- الحواجب -->
+            <path d="M66 78 Q78 71 91 77" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M109 77 Q122 71 134 78" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+            <!-- العينان الكبيرتان بنمط الأنمي -->
+            <g id="eyeL">
+              <ellipse cx="78" cy="99" rx="15" ry="18" fill="#fff"/>
+              <ellipse class="mascot-eye-pupil" id="pupilL" cx="78" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+              <circle cx="82.5" cy="94.5" r="3.4" fill="#fff"/>
+              <circle cx="74.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+            </g>
+            <g id="eyeR">
+              <ellipse cx="122" cy="99" rx="15" ry="18" fill="#fff"/>
+              <ellipse class="mascot-eye-pupil" id="pupilR" cx="122" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+              <circle cx="126.5" cy="94.5" r="3.4" fill="#fff"/>
+              <circle cx="118.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
             </g>
 
-            <!-- العيون الإنمي (المظهر السعيد مع نجوم) -->
-            <g id="eyesHappy" class="hidden-feature">
-              <path d="M 66 98 Q 75 82 84 98" stroke="#1F3B4D" stroke-width="4" stroke-linecap="round" fill="none"/>
-              <path d="M 116 98 Q 125 82 134 98" stroke="#1F3B4D" stroke-width="4" stroke-linecap="round" fill="none"/>
-              <path d="M 75 88 L 77 92 L 81 92 L 78 95 L 79 99 L 75 96 L 71 99 L 72 95 L 69 92 L 73 92 Z" fill="#FFC94A"/>
-              <path d="M 125 88 L 127 92 L 131 92 L 128 95 L 129 99 L 125 96 L 121 99 L 122 95 L 119 92 L 123 92 Z" fill="#FFC94A"/>
-            </g>
+            <!-- أنف صغير -->
+            <path d="M100 109 Q102 113 100 115" stroke="#E8B58C" stroke-width="2" fill="none" stroke-linecap="round" opacity=".6"/>
 
             <!-- الفم -->
-            <path id="mouthNeutral" d="M 88 124 Q 100 130 112 124" stroke="#1F3B4D" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-            <path id="mouthHappy" class="hidden-feature" d="M 86 120 Q 100 144 114 120 Z" fill="#FF7A7A"/>
+            <path id="mascotMouth" d="M90 123 Q100 129 110 123" stroke="#B8654F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
 
-            <!-- الغرة والشعر الأمامي -->
-            <path d="M 50 75 Q 70 95 100 65 Q 130 95 150 75 Q 130 35 100 35 Q 70 35 50 75 Z" fill="#4FB6E8"/>
-            <!-- العمامة/الإكسسوار -->
-            <circle cx="100" cy="38" r="7" fill="#FFC94A"/>
+            <!-- كتاب صغير بجانبه -->
+            <g transform="translate(24,152)">
+              <rect x="0" y="0" width="24" height="17" rx="3" fill="#FFC94A"/>
+              <line x1="12" y1="2" x2="12" y2="15" stroke="#fff" stroke-width="2"/>
+            </g>
           </svg>
         </div>
 
@@ -399,26 +422,6 @@
           <select id="studentSelect" disabled>
             <option value="">جارٍ تحميل الأسماء…</option>
           </select>
-        </div>
-
-        <!-- تعليمات الاستخدام التفاعلية حسب الجهاز -->
-        <div class="instructions-box">
-          <div id="instructionsDesktop">
-            <h3>💻 خطوات الاستخدام (على الحاسوب):</h3>
-            <ol>
-              <li>اختر اسمك من القائمة أعلاه بمؤشر الفأرة.</li>
-              <li>ضع علامة (✔) على المهام التي أنجزتها اليوم.</li>
-              <li>راجع خياراتك، ثم اضغط زر <strong>"تأكيد وحفظ المهام"</strong>.</li>
-            </ol>
-          </div>
-          <div id="instructionsMobile" class="hidden-feature">
-            <h3>📱 خطوات الاستخدام (على الهاتف):</h3>
-            <ol>
-              <li>اختر اسمك باللمس على الشاشة.</li>
-              <li>انقر تحديد المهام التي أنجزتها بكل سهولة.</li>
-              <li>اضغط زر <strong>"تأكيد وحفظ المهام"</strong> للحفظ الفوري.</li>
-            </ol>
-          </div>
         </div>
 
         <button id="startBtn" class="btn-primary" disabled type="button">ابدأ 🚀</button>
@@ -455,17 +458,13 @@
 
     <!-- ===== شاشة المهام اليومية ===== -->
     <section id="screen-tasks" class="screen hidden">
+
       <div class="tasks-header">
         <div>
           <div class="student-hello" id="studentHello">أهلاً يا …</div>
-          <button class="change-student" id="changeStudentBtn" type="button">الخروج من الحساب</button>
+          <button class="change-student" id="changeStudentBtn" type="button">تغيير الاسم</button>
         </div>
         <div class="streak-pill">🔥 <span id="streakCount">0</span> يوم متتالي</div>
-      </div>
-
-      <!-- تنبيه التسجيل المسبق -->
-      <div id="alreadySubmittedBanner" class="alert-banner hidden">
-        🔒 لقد قمت بتأكيد واجباتك لهذا اليوم بالفعل! يمكنك مراجعة إنجازاتك أدناه (للعرض فقط).
       </div>
 
       <div class="progress-row" id="progressRow">
@@ -473,6 +472,8 @@
         <div class="progress-dot" data-slot="2">⭐</div>
         <div class="progress-dot" data-slot="3">⭐</div>
       </div>
+
+      <div id="celebrateAllMsg" class="celebrate-msg hidden">🎉 أحسنت! أنجزت كل مهامك، لا تنسَ الضغط على زر التأكيد ⭐</div>
 
       <div class="task-card" data-task="wird">
         <div class="task-emoji">📖</div>
@@ -501,29 +502,17 @@
         <div class="task-check" data-check></div>
       </div>
 
-      <!-- زر التأكيد والتسجيل النهائى -->
-      <div class="action-container">
-        <button id="confirmTasksBtn" class="btn-confirm" type="button">
-          ✨ تأكيد وحفظ المهام اليومية
-        </button>
-      </div>
+      <button id="confirmBtn" class="btn-primary active confirm-btn" type="button">⭐ تأكيد وحفظ واجباتي</button>
+      <div id="lockedNotice" class="locked-notice hidden">✅ لقد سجّلت واجباتك لهذا اليوم، أحسنت! عد غدًا لمهام جديدة 🌟</div>
 
       <div class="calendar-title">🗓️ آخر أيامك</div>
       <div class="star-calendar" id="starCalendar"></div>
+
     </section>
+
   </main>
 
   <footer class="tiny-note">رفقاء القرآن والنحو — صُنع بحب لطلاب العلم الصغار</footer>
-
-  <!-- ===== نافذة التهنئة عند إرسال المهام ===== -->
-  <div id="successModal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-emoji">🎉</div>
-      <h2>أحسنت يا بطل! 🌟</h2>
-      <p id="successModalMsg">تم تسجيل إنجازك لهذا اليوم بنجاح! واصل هذا التميز والتألق غداً.</p>
-      <button id="closeSuccessModalBtn" class="btn-primary active" type="button">حسناً، فهمت!</button>
-    </div>
-  </div>
 
   <!-- ===== نافذة دخول الأستاذ ===== -->
   <div id="teacherLoginModal" class="modal-backdrop hidden">
@@ -539,6 +528,17 @@
     </div>
   </div>
 
+  <!-- ===== نافذة الاحتفال بعد التأكيد ===== -->
+  <div id="celebrationOverlay" class="modal-backdrop hidden">
+    <div class="modal-box celebration-box">
+      <div class="celebration-emoji">🎉</div>
+      <h2 id="celebrationTitle">أحسنت!</h2>
+      <p id="celebrationText">لقد سجّلت إنجازك لهذا اليوم ✨</p>
+      <div class="celebration-stars" id="celebrationStars"></div>
+      <button class="btn-primary active" id="celebrationCloseBtn" type="button">رائع! متابعة 🚀</button>
+    </div>
+  </div>
+
   <!-- ===== لوحة تحكم الأستاذ ===== -->
   <div id="teacherDashboard" class="hidden">
     <div class="dash-wrap">
@@ -546,6 +546,7 @@
         <button class="btn-close-dash" id="closeDashBtn" type="button">إغلاق ✖</button>
         <div class="dash-title">لوحة تحكم الأستاذ 🎓</div>
       </div>
+
       <div class="dash-toolbar">
         <input type="search" id="dashSearch" placeholder="بحث عن اسم…">
         <div class="seg-group" id="periodSeg">
@@ -555,6 +556,7 @@
         </div>
         <button class="btn-export" id="exportCsvBtn" type="button">⬇️ تصدير CSV</button>
       </div>
+
       <div class="dash-grid">
         <div class="panel">
           <h3>🏆 لوحة الصدارة</h3>
@@ -570,8 +572,8 @@
 
   <div id="confettiLayer"></div>
   <div id="toast"></div>
+
 </div>
-<!-- تم تغيير الرقم هنا لضمان تحميل المتصفح للنسخة الجديدة -->
-<script src="script.js?v=5"></script>
+<script src="script.js"></script>
 </body>
 </html>
