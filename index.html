@@ -4,30 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>رفقاء القرآن والنحو</title>
-<meta name="description" content="نظام تتبع تفاعلي للمهام اليومية: حفظ الورد، تحفة الأطفال، وإعراب الآجرومية">
+<meta name="description" content="منصة تعليمية للأطفال لمتابعة إنجازهم اليومي في القرآن الكريم وتحفة الأطفال والنحو">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --sky:#4FB6E8;
-    --sky-dark:#2C86B8;
-    --sky-pale:#E6F6FC;
-    --green:#5FD3A3;
-    --green-dark:#2E9E76;
-    --yellow:#FFC94A;
-    --orange:#FF9B6A;
+    --sky:#4FB6E8; --sky-dark:#2C86B8; --sky-pale:#E6F6FC;
+    --green:#5FD3A3; --green-dark:#2E9E76; --green-pale:#EAFBF3;
+    --yellow:#FFC94A; --yellow-dark:#C98A00;
+    --orange:#FF9B6A; --orange-dark:#C15A2A;
+    --purple:#9B8CF2; --purple-dark:#6952D6;
     --coral:#FF7A7A;
-    --ink:#1F3B4D;
-    --ink-soft:#5A7488;
-    --bg:#F3FBFD;
-    --card:#FFFFFF;
+    --ink:#1F3B4D; --ink-soft:#5A7488;
+    --bg:#F3FBFD; --card:#FFFFFF;
     --shadow: 0 10px 25px -8px rgba(31,59,77,.18);
-    --radius-lg:28px;
-    --radius-md:18px;
-    --radius-sm:12px;
-    --font-display:'Cairo',sans-serif;
-    --font-body:'Tajawal',sans-serif;
+    --radius-lg:28px; --radius-md:18px; --radius-sm:12px;
+    --font-display:'Cairo',sans-serif; --font-body:'Tajawal',sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -37,9 +30,7 @@
       radial-gradient(circle at 8% 12%, rgba(95,211,163,.18), transparent 40%),
       radial-gradient(circle at 92% 18%, rgba(79,182,232,.20), transparent 45%),
       var(--bg);
-    color:var(--ink);
-    min-height:100vh;
-    overflow-x:hidden;
+    color:var(--ink); min-height:100vh; overflow-x:hidden;
   }
   h1,h2,h3,.brand-title{font-family:var(--font-display);}
   button{font-family:var(--font-body);cursor:pointer;}
@@ -47,193 +38,121 @@
   a{color:inherit;}
 
   /* ===== Topbar ===== */
-  .topbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:16px 20px;
-    max-width:980px;
-    margin:0 auto;
-  }
-  .teacher-btn{
-    background:var(--card);
-    border:2px solid var(--sky-pale);
-    color:var(--sky-dark);
-    font-weight:700;
-    font-size:.9rem;
-    padding:10px 16px;
-    border-radius:999px;
-    box-shadow:var(--shadow);
-    transition:transform .15s ease, box-shadow .15s ease;
-  }
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;max-width:980px;margin:0 auto;}
+  .teacher-btn{background:var(--card);border:2px solid var(--sky-pale);color:var(--sky-dark);font-weight:700;font-size:.9rem;padding:10px 16px;border-radius:999px;box-shadow:var(--shadow);transition:transform .15s ease, box-shadow .15s ease;}
   .teacher-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px -10px rgba(31,59,77,.25);}
   .brand{text-align:left;}
   .brand-title{font-size:1.25rem;font-weight:800;color:var(--ink);}
   .brand-sub{display:block;font-size:.8rem;color:var(--ink-soft);margin-top:2px;}
+  .nahw-badge{font-size:.78rem;font-weight:700;color:var(--sky-dark);background:var(--sky-pale);padding:8px 14px;border-radius:999px;white-space:nowrap;}
+  @media(max-width:560px){.nahw-badge{display:none;}}
 
-  main{max-width:640px;margin:0 auto;padding:10px 20px 60px;}
+  main{max-width:640px;margin:0 auto;padding:10px 20px 40px;}
 
-  /* ===== Screens ===== */
   .screen{animation:fadeIn .4s ease;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
   /* ===== Welcome screen ===== */
-  .welcome-card{
-    background:var(--card);
-    border-radius:var(--radius-lg);
-    padding:34px 26px 30px;
-    box-shadow:var(--shadow);
-    text-align:center;
-    margin-top:10px;
+  .welcome-card{background:var(--card);border-radius:var(--radius-lg);padding:34px 26px 30px;box-shadow:var(--shadow);text-align:center;margin-top:10px;position:relative;}
+  .mascot-wrap{width:170px;margin:0 auto 6px;position:relative;}
+  .speech-bubble{
+    background:var(--sky-pale);color:var(--sky-dark);font-weight:700;font-size:.92rem;
+    border-radius:var(--radius-md);padding:12px 16px;margin:6px auto 18px;max-width:340px;
+    position:relative;min-height:1.2em;transition:all .2s ease;
   }
-  .welcome-hello{font-size:1.4rem;font-weight:800;margin:6px 0 18px;}
-  .mascot-wrap{width:170px;margin:0 auto 14px;}
+  .speech-bubble::before{
+    content:"";position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+    border:8px solid transparent;border-bottom-color:var(--sky-pale);
+  }
 
-  /* dropdown */
   .field-label{display:block;font-weight:700;color:var(--ink-soft);margin-bottom:8px;font-size:.9rem;}
   .select-wrap{position:relative;margin-bottom:22px;}
   select#studentSelect{
-    appearance:none;-webkit-appearance:none;-moz-appearance:none;
-    width:100%;
-    padding:16px 46px 16px 18px;
-    font-size:1.05rem;
-    font-family:var(--font-body);
-    font-weight:700;
-    color:var(--ink);
-    background:var(--sky-pale);
-    border:3px solid transparent;
-    border-radius:var(--radius-md);
-    outline:none;
-    transition:border-color .15s ease, background .15s ease;
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;width:100%;
+    padding:16px 46px 16px 18px;font-size:1.05rem;font-family:var(--font-body);font-weight:700;
+    color:var(--ink);background:var(--sky-pale);border:3px solid transparent;border-radius:var(--radius-md);
+    outline:none;transition:border-color .15s ease, background .15s ease;
   }
   select#studentSelect:focus{border-color:var(--sky);background:#fff;}
   select#studentSelect:disabled{opacity:.6;}
-  .select-wrap::after{
-    content:"▾";
-    position:absolute;left:18px;top:50%;transform:translateY(-50%);
-    color:var(--sky-dark);font-size:1.1rem;pointer-events:none;
-  }
-  .select-wrap.dir-ltr::after{content:none;}
+  .select-wrap::after{content:"▾";position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--sky-dark);font-size:1.1rem;pointer-events:none;}
 
   .btn-primary{
-    display:inline-flex;align-items:center;gap:8px;justify-content:center;
-    width:100%;
-    padding:16px 20px;
-    font-size:1.1rem;font-weight:800;
-    color:#fff;
-    background:#c9d3d8;
-    border:none;border-radius:999px;
-    transition:transform .15s ease, box-shadow .2s ease, background .3s ease;
-    box-shadow:none;
+    display:inline-flex;align-items:center;gap:8px;justify-content:center;width:100%;
+    padding:16px 20px;font-size:1.1rem;font-weight:800;color:#fff;background:#c9d3d8;
+    border:none;border-radius:999px;transition:transform .15s ease, box-shadow .2s ease, background .3s ease;box-shadow:none;
   }
-  .btn-primary.active{
-    background:linear-gradient(135deg,var(--green),var(--sky));
-    box-shadow:0 12px 26px -8px rgba(46,158,118,.55);
-  }
+  .btn-primary.active{background:linear-gradient(135deg,var(--green),var(--sky));box-shadow:0 12px 26px -8px rgba(46,158,118,.55);}
   .btn-primary.active:hover{transform:translateY(-2px) scale(1.01);}
   .btn-primary:disabled{cursor:not-allowed;}
+
+  /* ===== كيف أستخدم الموقع ===== */
+  .howto-box{background:var(--card);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:20px 22px;margin-top:16px;}
+  .howto-title{font-weight:800;font-size:.98rem;margin-bottom:12px;}
+  .howto-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .howto-steps li{display:flex;align-items:center;gap:10px;font-size:.88rem;color:var(--ink-soft);}
+  .howto-num{width:26px;height:26px;border-radius:50%;background:var(--sky-pale);color:var(--sky-dark);font-weight:800;font-size:.78rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+  footer.tiny-note{max-width:640px;margin:22px auto 0;text-align:center;color:var(--ink-soft);font-size:.78rem;opacity:.85;line-height:1.7;}
 
   /* ===== Mascot SVG ===== */
   .mascot-eye-pupil{transition:transform .05s linear;}
   .mascot-happy-jump{animation:mascotJump .55s ease;}
-  @keyframes mascotJump{
-    0%{transform:translateY(0) rotate(0);}
-    30%{transform:translateY(-14px) rotate(-4deg);}
-    55%{transform:translateY(0) rotate(3deg);}
-    75%{transform:translateY(-6px) rotate(-2deg);}
-    100%{transform:translateY(0) rotate(0);}
-  }
+  @keyframes mascotJump{0%{transform:translateY(0) rotate(0);}30%{transform:translateY(-14px) rotate(-4deg);}55%{transform:translateY(0) rotate(3deg);}75%{transform:translateY(-6px) rotate(-2deg);}100%{transform:translateY(0) rotate(0);}}
+  .mascot-blink{animation:mascotBlink 4.5s ease-in-out infinite;}
+  @keyframes mascotBlink{0%,92%,100%{transform:scaleY(1);}94%{transform:scaleY(.12);}96%{transform:scaleY(1);}}
+  .mascot-idle{animation:mascotIdle 3.2s ease-in-out infinite;}
+  @keyframes mascotIdle{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
 
   /* ===== Loading / Error ===== */
-  .state-card{
-    background:var(--card);border-radius:var(--radius-lg);
-    padding:40px 26px;text-align:center;box-shadow:var(--shadow);margin-top:10px;
-  }
-  .spinner{
-    width:52px;height:52px;margin:0 auto 18px;
-    border:6px solid var(--sky-pale);
-    border-top-color:var(--sky);
-    border-radius:50%;
-    animation:spin .8s linear infinite;
-  }
+  .state-card{background:var(--card);border-radius:var(--radius-lg);padding:40px 26px;text-align:center;box-shadow:var(--shadow);margin-top:10px;}
+  .spinner{width:52px;height:52px;margin:0 auto 18px;border:6px solid var(--sky-pale);border-top-color:var(--sky);border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .state-title{font-weight:800;font-size:1.05rem;margin-bottom:6px;}
   .state-sub{color:var(--ink-soft);font-size:.9rem;}
   .state-emoji{font-size:2.4rem;margin-bottom:10px;}
-  .btn-retry{
-    margin-top:18px;background:var(--sky-pale);color:var(--sky-dark);
-    border:none;border-radius:999px;padding:10px 22px;font-weight:800;
-  }
+  .btn-retry{margin-top:18px;background:var(--sky-pale);color:var(--sky-dark);border:none;border-radius:999px;padding:10px 22px;font-weight:800;}
 
   /* ===== Tasks screen ===== */
-  .tasks-header{
-    display:flex;align-items:center;justify-content:space-between;
-    background:var(--card);border-radius:var(--radius-lg);
-    padding:18px 22px;box-shadow:var(--shadow);margin-top:6px;
-  }
+  .tasks-header{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--radius-lg);padding:18px 22px;box-shadow:var(--shadow);margin-top:6px;gap:12px;flex-wrap:wrap;}
+  .tasks-header-left{display:flex;align-items:center;gap:12px;}
+  .mini-mascot-wrap{width:56px;height:56px;flex-shrink:0;}
+  .mini-mascot-wrap svg{width:100%;height:100%;}
   .student-hello{font-weight:800;font-size:1.05rem;}
+  .motivate-line{font-size:.78rem;color:var(--ink-soft);margin-top:3px;}
   .change-student{font-size:.78rem;color:var(--sky-dark);font-weight:700;background:none;border:none;padding:2px;margin-top:4px;}
-  .streak-pill{
-    display:flex;align-items:center;gap:6px;
-    background:linear-gradient(135deg,#FFE3B0,var(--yellow));
-    color:#8a5a00;font-weight:800;font-size:.95rem;
-    padding:9px 16px;border-radius:999px;
-  }
+  .streak-pill{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#FFE3B0,var(--yellow));color:#8a5a00;font-weight:800;font-size:.95rem;padding:9px 16px;border-radius:999px;white-space:nowrap;}
 
-  .progress-row{display:flex;gap:10px;justify-content:center;margin:20px 0;}
-  .progress-dot{
-    width:34px;height:34px;border-radius:50%;
-    background:#E4EEF2;color:#9fb3bd;
-    display:flex;align-items:center;justify-content:center;
-    font-size:1.1rem;transition:all .3s ease;
-  }
-  .progress-dot.done{
-    background:linear-gradient(135deg,var(--green),var(--sky));
-    color:#fff;transform:scale(1.08);
-    box-shadow:0 8px 16px -6px rgba(46,158,118,.5);
-  }
+  /* ===== ملخص النقاط والرتبة ===== */
+  .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+  .stat-card{background:var(--card);border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);text-align:center;}
+  .stat-emoji{font-size:1.4rem;}
+  .stat-value{font-weight:800;font-size:1.15rem;margin-top:2px;}
+  .stat-label{font-size:.72rem;color:var(--ink-soft);margin-top:2px;}
 
-  .task-card{
-    background:var(--card);border-radius:var(--radius-md);
-    padding:18px 18px;box-shadow:var(--shadow);
-    display:flex;align-items:center;gap:14px;
-    margin-bottom:14px;
-    border:2px solid transparent;
-    transition:border-color .25s ease, transform .15s ease;
-  }
+  .progress-row{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+  .progress-dot{width:34px;height:34px;border-radius:50%;background:#E4EEF2;color:#9fb3bd;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .3s ease;}
+  .progress-dot.done{background:linear-gradient(135deg,var(--green),var(--sky));color:#fff;transform:scale(1.08);box-shadow:0 8px 16px -6px rgba(46,158,118,.5);}
+
+  .task-card{background:var(--card);border-radius:var(--radius-md);padding:18px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;margin-bottom:14px;border:2px solid transparent;transition:border-color .25s ease, transform .15s ease;}
   .task-card.done{border-color:var(--green);background:linear-gradient(0deg,#F1FBF6,#fff);}
   .task-emoji{font-size:1.7rem;width:44px;text-align:center;}
   .task-info{flex:1;}
   .task-title{font-weight:800;font-size:1rem;}
   .task-sub{color:var(--ink-soft);font-size:.8rem;margin-top:2px;}
-  .task-check{
-    width:38px;height:38px;border-radius:12px;
-    border:3px solid #D7E4E9;background:#fff;
-    display:flex;align-items:center;justify-content:center;
-    font-size:1.1rem;color:#fff;flex-shrink:0;
-    transition:all .2s ease;
-  }
+  .task-check{width:38px;height:38px;border-radius:12px;border:3px solid #D7E4E9;background:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;flex-shrink:0;transition:all .2s ease;}
   .task-check.checked{background:var(--green);border-color:var(--green-dark);}
-  .task-card.saving .task-check{opacity:.5;}
+  .task-card.locked{opacity:.9;}
+  .task-card.locked .task-check{pointer-events:none;cursor:default;border-style:dashed;}
+  .task-card.locked .task-check.checked{background:var(--green);border-style:solid;}
+  .task-check.dash{color:var(--ink-soft);font-size:1.3rem;font-weight:800;}
 
-  .celebrate-msg{
-    text-align:center;font-weight:800;color:var(--green-dark);
-    background:#EAFBF3;border-radius:var(--radius-md);
-    padding:14px;margin:6px 0 18px;font-size:.95rem;
-  }
+  .msg-box{text-align:center;font-weight:700;color:var(--sky-dark);background:var(--sky-pale);border-radius:var(--radius-md);padding:13px;margin:4px 0 16px;font-size:.9rem;min-height:1.2em;transition:opacity .2s ease;}
+  .celebrate-msg{text-align:center;font-weight:800;color:var(--green-dark);background:var(--green-pale);border-radius:var(--radius-md);padding:14px;margin:6px 0 18px;font-size:.95rem;}
 
-  /* ===== زر التأكيد وقفل اليوم ===== */
   .confirm-btn{margin:8px 0 6px;}
-  .locked-notice{
-    text-align:center;font-weight:800;color:var(--green-dark);
-    background:#EAFBF3;border-radius:var(--radius-md);
-    padding:16px;margin:8px 0 6px;font-size:.95rem;
-    border:2px solid #CDEFDE;
-  }
-  .task-card.locked{opacity:.82;}
-  .task-card.locked .task-check{pointer-events:none;cursor:default;}
+  .locked-notice{text-align:center;font-weight:800;color:var(--green-dark);background:var(--green-pale);border-radius:var(--radius-md);padding:16px;margin:8px 0 6px;font-size:.95rem;border:2px solid #CDEFDE;}
 
-  /* ===== نافذة الاحتفال ===== */
   .celebration-box{max-width:340px;}
   .celebration-emoji{font-size:3.2rem;margin-bottom:4px;animation:mascotJump .7s ease;}
   .celebration-box h2{font-size:1.25rem;margin:4px 0 6px;}
@@ -243,43 +162,63 @@
   .star-calendar{display:flex;gap:8px;justify-content:space-between;overflow-x:auto;padding-bottom:4px;}
   .cal-day{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:34px;}
   .cal-dot{width:22px;height:22px;border-radius:50%;background:#D7E4E9;}
-  .cal-dot.full{background:var(--green);}
-  .cal-dot.partial{background:var(--yellow);}
-  .cal-dot.empty{background:#D7E4E9;}
+  .cal-dot.none{background:#D9E2E6;}
+  .cal-dot.zero{background:var(--coral);}
+  .cal-dot.one{background:var(--orange);}
+  .cal-dot.two{background:var(--purple);}
+  .cal-dot.three{background:var(--green);}
   .cal-label{font-size:.65rem;color:var(--ink-soft);}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:.68rem;color:var(--ink-soft);}
+  .cal-legend span{display:inline-flex;align-items:center;gap:4px;}
+  .cal-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+  /* ===== الرتبة ===== */
+  .rank-card{background:linear-gradient(135deg,#fff,var(--sky-pale));border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);text-align:center;margin:16px 0;}
+  .rank-emoji{font-size:2.2rem;}
+  .rank-name{font-weight:800;font-size:1.05rem;margin-top:4px;}
+  .rank-next{font-size:.76rem;color:var(--ink-soft);margin-top:4px;}
+  .rank-bar{height:8px;border-radius:999px;background:#E4EEF2;margin-top:10px;overflow:hidden;}
+  .rank-bar-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--green));border-radius:999px;transition:width .5s ease;}
+
+  /* ===== الأوسمة ===== */
+  .section-title{font-weight:800;font-size:.98rem;margin:26px 0 12px;display:flex;align-items:center;gap:6px;}
+  .badges-group{margin-bottom:14px;}
+  .badges-group-title{font-size:.8rem;font-weight:800;color:var(--ink-soft);margin-bottom:8px;}
+  .badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px;}
+  .badge-item{background:var(--card);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:10px 6px;text-align:center;}
+  .badge-item .b-emoji{font-size:1.5rem;}
+  .badge-item .b-name{font-size:.65rem;font-weight:700;color:var(--ink-soft);margin-top:4px;line-height:1.3;}
+  .badge-item.locked{opacity:.45;filter:grayscale(1);}
+  .badge-item.secret{opacity:.65;}
+  .badge-item.secret .b-emoji{filter:grayscale(0.3);}
+  .badge-toast-emoji{font-size:2.6rem;}
+
+  /* ===== رحلتي ===== */
+  .journey-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;}
+  .journey-item{display:flex;align-items:center;gap:12px;padding:9px 0;position:relative;}
+  .journey-item::before{content:"";position:absolute;right:15px;top:-2px;bottom:-2px;width:2px;background:#E4EEF2;z-index:0;}
+  .journey-item:first-child::before{top:50%;}
+  .journey-item:last-child::before{bottom:50%;}
+  .journey-dot{width:32px;height:32px;border-radius:50%;background:#E4EEF2;display:flex;align-items:center;justify-content:center;font-size:1rem;z-index:1;flex-shrink:0;}
+  .journey-item.done .journey-dot{background:linear-gradient(135deg,var(--green),var(--sky));color:#fff;}
+  .journey-text{font-size:.85rem;font-weight:700;color:var(--ink-soft);}
+  .journey-item.done .journey-text{color:var(--ink);}
 
   /* ===== Toast ===== */
-  #toast{
-    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);
-    background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;
-    font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;
-    transition:all .3s ease;z-index:80;max-width:90vw;text-align:center;
-  }
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:.88rem;font-weight:700;opacity:0;pointer-events:none;transition:all .3s ease;z-index:80;max-width:90vw;text-align:center;}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   /* ===== Confetti ===== */
-  #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60;}
+  #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:90;}
   .confetto{position:absolute;top:-12px;border-radius:2px;animation:confettiFall linear forwards;}
-  @keyframes confettiFall{
-    to{transform:translateY(105vh) rotate(400deg);opacity:.9;}
-  }
+  @keyframes confettiFall{to{transform:translateY(105vh) rotate(400deg);opacity:.9;}}
 
-  /* ===== Modal (teacher login) ===== */
-  .modal-backdrop{
-    position:fixed;inset:0;background:rgba(20,40,50,.45);
-    display:flex;align-items:center;justify-content:center;z-index:70;padding:18px;
-  }
-  .modal-box{
-    background:#fff;border-radius:var(--radius-lg);padding:28px 24px;
-    width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;
-  }
+  /* ===== Modal ===== */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(20,40,50,.45);display:flex;align-items:center;justify-content:center;z-index:70;padding:18px;}
+  .modal-box{background:#fff;border-radius:var(--radius-lg);padding:28px 24px;width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;}
   .modal-box h2{font-size:1.1rem;margin:0 0 6px;}
   .modal-box p{color:var(--ink-soft);font-size:.85rem;margin:0 0 16px;}
-  .modal-box input[type=password]{
-    width:100%;padding:13px 14px;border-radius:var(--radius-sm);
-    border:2px solid var(--sky-pale);font-size:1rem;text-align:center;
-    outline:none;margin-bottom:12px;
-  }
+  .modal-box input[type=password]{width:100%;padding:13px 14px;border-radius:var(--radius-sm);border:2px solid var(--sky-pale);font-size:1rem;text-align:center;outline:none;margin-bottom:12px;}
   .modal-box input[type=password]:focus{border-color:var(--sky);}
   .modal-actions{display:flex;gap:10px;}
   .btn-sm{flex:1;padding:11px;border-radius:999px;border:none;font-weight:800;font-size:.88rem;}
@@ -287,47 +226,139 @@
   .btn-sm.confirm{background:var(--sky);color:#fff;}
   .modal-error{color:var(--coral);font-size:.8rem;min-height:18px;margin-top:-4px;margin-bottom:6px;}
 
-  /* ===== Teacher dashboard ===== */
-  #teacherDashboard{position:fixed;inset:0;background:var(--bg);z-index:65;overflow-y:auto;}
-  .dash-wrap{max-width:920px;margin:0 auto;padding:18px 18px 60px;}
-  .dash-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-  .dash-title{font-weight:800;font-size:1.2rem;}
-  .btn-close-dash{background:#fff;border:2px solid var(--sky-pale);border-radius:999px;padding:9px 18px;font-weight:800;color:var(--sky-dark);}
+  /* ===== Badge unlock toast modal ===== */
+  .badge-modal .modal-box{max-width:300px;}
 
-  .dash-toolbar{
-    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-    background:#fff;border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);margin-bottom:16px;
+  /* ================================================================
+     لوحة تحكم الأستاذ
+     ================================================================ */
+  #teacherDashboard{position:fixed;inset:0;background:var(--bg);z-index:65;overflow:hidden;display:flex;}
+
+  .dash-sidebar{
+    width:230px;flex-shrink:0;background:#fff;box-shadow:2px 0 14px -6px rgba(31,59,77,.12);
+    display:flex;flex-direction:column;padding:18px 14px;overflow-y:auto;
+    transition:transform .25s ease;z-index:10;
   }
-  .dash-toolbar input[type=search]{
-    flex:1;min-width:150px;padding:10px 14px;border-radius:999px;border:2px solid var(--sky-pale);outline:none;font-family:var(--font-body);
+  .dash-sidebar-brand{font-weight:800;font-size:1rem;padding:6px 10px 18px;}
+  .dash-nav{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;flex:1;}
+  .dash-nav button{
+    width:100%;text-align:right;background:none;border:none;padding:11px 12px;border-radius:var(--radius-sm);
+    font-size:.88rem;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:9px;
   }
+  .dash-nav button.active{background:var(--sky-pale);color:var(--sky-dark);}
+  .dash-nav button:hover{background:#F3F8FA;}
+  .dash-sidebar-bottom{border-top:1px solid #EEF3F5;padding-top:10px;margin-top:8px;}
+
+  .dash-main{flex:1;overflow-y:auto;padding:20px 22px 60px;min-width:0;}
+  .dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+  .dash-header h2{margin:0;font-size:1.15rem;}
+  .dash-header .dash-date{font-size:.82rem;color:var(--ink-soft);font-weight:700;}
+  .btn-hamburger{display:none;background:#fff;border:2px solid var(--sky-pale);border-radius:var(--radius-sm);width:40px;height:40px;font-size:1.1rem;}
+  .btn-close-dash{background:#fff;border:2px solid var(--sky-pale);border-radius:999px;padding:9px 18px;font-weight:800;color:var(--sky-dark);font-size:.85rem;}
+
+  .dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+  .dcard{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);}
+  .dcard .dc-emoji{font-size:1.3rem;}
+  .dcard .dc-value{font-weight:800;font-size:1.3rem;margin-top:4px;}
+  .dcard .dc-label{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+  .dcard.alert{background:#FFF3F0;}
+
+  .panel{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);margin-bottom:16px;}
+  .panel h3{margin:0 0 12px;font-size:.98rem;}
+  .dash-grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:900px){.dash-grid{grid-template-columns:1.3fr 1fr;}}
+  @media(min-width:1100px){.dash-grid.grid3{grid-template-columns:1fr 1fr 1fr;}}
+
+  .attn-item{display:flex;align-items:center;justify-content:between;gap:10px;padding:10px 0;border-bottom:1px solid #F0F5F7;font-size:.85rem;}
+  .attn-item:last-child{border-bottom:none;}
+  .attn-name{font-weight:800;flex:1;}
+  .attn-days{color:var(--coral);font-size:.78rem;font-weight:700;}
+
+  .dash-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow);margin-bottom:16px;}
+  .dash-toolbar input[type=search]{flex:1;min-width:150px;padding:10px 14px;border-radius:999px;border:2px solid var(--sky-pale);outline:none;font-family:var(--font-body);}
   .seg-group{display:flex;background:var(--sky-pale);border-radius:999px;padding:4px;gap:2px;}
   .seg-btn{border:none;background:none;padding:8px 14px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--sky-dark);}
   .seg-btn.active{background:var(--sky);color:#fff;}
-  .btn-export{background:var(--green);color:#fff;border:none;border-radius:999px;padding:10px 18px;font-weight:800;font-size:.85rem;}
+  .btn-export{background:var(--green);color:#fff;border:none;border-radius:999px;padding:10px 16px;font-weight:800;font-size:.82rem;white-space:nowrap;}
+  .btn-export.secondary{background:var(--sky);}
 
-  .dash-grid{display:grid;grid-template-columns:1fr;gap:16px;}
-  @media(min-width:760px){.dash-grid{grid-template-columns:1.3fr 1fr;}}
-  .panel{background:#fff;border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);}
-  .panel h3{margin:0 0 12px;font-size:.98rem;}
-
-  table.leaderboard{width:100%;border-collapse:collapse;font-size:.85rem;}
-  table.leaderboard th{text-align:right;color:var(--ink-soft);font-size:.75rem;padding:6px 8px;border-bottom:2px solid var(--sky-pale);cursor:pointer;user-select:none;}
-  table.leaderboard td{padding:8px;border-bottom:1px solid #F0F5F7;}
-  table.leaderboard tr.alert td{background:#FFF3F0;}
+  table.leaderboard,table.students-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table.leaderboard th,table.students-table th{text-align:right;color:var(--ink-soft);font-size:.75rem;padding:6px 8px;border-bottom:2px solid var(--sky-pale);}
+  table.leaderboard td,table.students-table td{padding:8px;border-bottom:1px solid #F0F5F7;}
+  table.students-table tr{cursor:pointer;}
+  table.students-table tr:hover td{background:#F7FBFC;}
+  tr.alert td{background:#FFF3F0;}
   .rank-badge{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--sky-pale);color:var(--sky-dark);font-weight:800;font-size:.7rem;align-items:center;justify-content:center;}
   .name-tag{font-weight:700;}
   .alert-flag{color:var(--coral);font-size:.72rem;font-weight:800;}
+  .status-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.72rem;font-weight:800;}
+  .status-pill.ok{background:var(--green-pale);color:var(--green-dark);}
+  .status-pill.warn{background:#FFF3F0;color:var(--coral);}
 
-  .chart-bars{display:flex;gap:20px;align-items:flex-end;height:180px;padding-top:10px;}
+  .chart-bars{display:flex;gap:16px;align-items:flex-end;height:170px;padding-top:10px;}
   .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
-  .chart-bar{width:100%;max-width:46px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--sky),var(--green));transition:height .6s ease;}
-  .chart-pct{font-size:.75rem;font-weight:800;margin-bottom:4px;}
-  .chart-label{font-size:.72rem;color:var(--ink-soft);margin-top:6px;text-align:center;}
+  .chart-bar{width:100%;max-width:44px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--sky),var(--green));transition:height .6s ease;}
+  .chart-pct{font-size:.72rem;font-weight:800;margin-bottom:4px;}
+  .chart-label{font-size:.68rem;color:var(--ink-soft);margin-top:6px;text-align:center;}
+
+  .hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .hbar-name{width:70px;font-size:.75rem;font-weight:700;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hbar-track{flex:1;height:14px;background:#EEF3F5;border-radius:999px;overflow:hidden;}
+  .hbar-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--green));border-radius:999px;}
+  .hbar-pct{width:36px;font-size:.72rem;font-weight:800;text-align:left;}
+
+  .line-chart{width:100%;height:150px;}
+  .pie-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .pie-legend{display:flex;flex-direction:column;gap:6px;font-size:.78rem;}
+  .pie-legend span{display:flex;align-items:center;gap:6px;}
+  .pie-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;}
 
   .empty-note{color:var(--ink-soft);font-size:.85rem;text-align:center;padding:18px;}
 
-  footer.tiny-note{max-width:640px;margin:14px auto 0;text-align:center;color:var(--ink-soft);font-size:.72rem;opacity:.8;}
+  /* ===== ملف التلميذ (Drawer) ===== */
+  .profile-backdrop{position:fixed;inset:0;background:rgba(20,40,50,.4);z-index:75;display:flex;justify-content:flex-end;}
+  .profile-drawer{width:100%;max-width:380px;background:#fff;height:100%;overflow-y:auto;padding:20px;box-shadow:-8px 0 30px -10px rgba(31,59,77,.3);}
+  .profile-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .profile-close{background:var(--sky-pale);border:none;border-radius:50%;width:34px;height:34px;font-size:1rem;color:var(--sky-dark);}
+  .profile-name{font-weight:800;font-size:1.2rem;margin-bottom:14px;}
+  .profile-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+
+  /* ===== إدارة الواجبات/البرنامج/الحضور (محلي) ===== */
+  .list-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #F0F5F7;}
+  .list-item:last-child{border-bottom:none;}
+  .list-item-info{flex:1;}
+  .list-item-title{font-weight:800;font-size:.9rem;}
+  .list-item-sub{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+  .icon-btn{background:#EEF3F5;border:none;border-radius:var(--radius-sm);width:32px;height:32px;font-size:.85rem;}
+  .icon-btn.danger{background:#FFF3F0;color:var(--coral);}
+  .form-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .form-row label{font-size:.78rem;font-weight:700;color:var(--ink-soft);}
+  .form-row input,.form-row select,.form-row textarea{
+    padding:10px 12px;border-radius:var(--radius-sm);border:2px solid var(--sky-pale);font-family:var(--font-body);font-size:.9rem;outline:none;
+  }
+  .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--sky);}
+  .form-actions{display:flex;gap:8px;margin-top:8px;}
+
+  .attendance-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .attendance-toolbar input[type=date]{padding:9px 12px;border-radius:var(--radius-sm);border:2px solid var(--sky-pale);font-family:var(--font-body);}
+  .att-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F0F5F7;}
+  .att-name{flex:1;font-weight:700;font-size:.88rem;}
+  .att-opts{display:flex;gap:6px;}
+  .att-opt{border:2px solid #EEF3F5;background:#fff;border-radius:999px;padding:6px 12px;font-size:.75rem;font-weight:700;color:var(--ink-soft);}
+  .att-opt.sel-present{background:var(--green-pale);border-color:var(--green);color:var(--green-dark);}
+  .att-opt.sel-absent{background:#FFF0F0;border-color:var(--coral);color:var(--coral);}
+  .att-opt.sel-late{background:#FFF7E0;border-color:var(--yellow-dark);color:var(--yellow-dark);}
+
+  .schedule-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+
+  /* ===== Responsive: mobile teacher dashboard ===== */
+  @media(max-width:820px){
+    .dash-sidebar{position:fixed;top:0;bottom:0;right:0;transform:translateX(100%);width:250px;}
+    .dash-sidebar.open{transform:translateX(0);}
+    .btn-hamburger{display:flex;align-items:center;justify-content:center;}
+    .dash-main{width:100%;}
+    table.leaderboard, table.students-table{display:block;overflow-x:auto;white-space:nowrap;}
+  }
 </style>
 </head>
 <body>
@@ -336,78 +367,51 @@
   <header class="topbar">
     <button id="teacherBtn" class="teacher-btn" type="button">🎓 الأستاذ</button>
     <div class="brand">
-      <span class="brand-title">رفقاء القرآن والنحو</span>
+      <span class="brand-title">📖 رفقاء القرآن والنحو</span>
       <span class="brand-sub">تابع إنجازك اليومي بكل حماس ✨</span>
     </div>
+    <span class="nahw-badge" aria-hidden="true">📖 رفقاء النحو</span>
   </header>
 
   <main>
 
-    <!-- ===== شاشة الترحيب ===== -->
+    <!-- ===== شاشة الترحيب (الصفحة الرئيسية) ===== -->
     <section id="screen-welcome" class="screen">
       <div class="welcome-card">
-        <div class="mascot-wrap">
-          <!-- الشخصية الكرتونية (Mascot) - نمط أنمي لطيف -->
-          <svg id="mascotSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <div class="mascot-wrap" id="mascotWrap">
+          <svg id="mascotSvg" class="mascot-idle" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="100" cy="190" rx="50" ry="7" fill="#DCEFF5"/>
-
-            <!-- الجسم / الكتفان -->
             <path d="M52 178 Q100 200 148 178 L140 138 Q100 154 60 138 Z" fill="#7FD9C4"/>
-
-            <!-- شعر خلفي (لإعطاء كثافة) -->
             <path d="M34 96 Q28 34 100 22 Q172 34 166 96 Q166 55 100 50 Q34 55 34 96 Z" fill="#F6D896"/>
-
-            <!-- الرأس -->
             <circle cx="100" cy="98" r="60" fill="#FFEFE1"/>
-            <!-- الأذنان -->
             <circle cx="41" cy="98" r="10" fill="#FFEFE1"/>
             <circle cx="159" cy="98" r="10" fill="#FFEFE1"/>
-
-            <!-- الوشاح الصوفي اللطيف -->
             <path d="M48 146 Q100 168 152 146 L152 162 Q100 184 48 162 Z" fill="#6FC6E8"/>
             <path d="M48 150 Q100 171 152 150" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".55"/>
             <path d="M48 156 Q100 177 152 156" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".4"/>
-
-            <!-- الشعر الأمامي / الغرة بنمط الأنمي -->
-            <path d="M36 90
-                     Q38 40 100 30
-                     Q162 40 164 90
-                     Q150 66 128 76
-                     Q116 56 100 74
-                     Q84 56 72 76
-                     Q50 66 36 90 Z" fill="#F9DEA1"/>
+            <path d="M36 90 Q38 40 100 30 Q162 40 164 90 Q150 66 128 76 Q116 56 100 74 Q84 56 72 76 Q50 66 36 90 Z" fill="#F9DEA1"/>
             <path d="M36 90 Q31 116 42 138 Q37 112 44 90 Z" fill="#F9DEA1"/>
             <path d="M164 90 Q169 116 158 138 Q163 112 156 90 Z" fill="#F9DEA1"/>
-
-            <!-- الخدود -->
             <ellipse id="cheekL" cx="61" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
             <ellipse id="cheekR" cx="139" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
-
-            <!-- الحواجب -->
             <path d="M66 78 Q78 71 91 77" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
             <path d="M109 77 Q122 71 134 78" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-            <!-- العينان الكبيرتان بنمط الأنمي -->
-            <g id="eyeL">
-              <ellipse cx="78" cy="99" rx="15" ry="18" fill="#fff"/>
-              <ellipse class="mascot-eye-pupil" id="pupilL" cx="78" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
-              <circle cx="82.5" cy="94.5" r="3.4" fill="#fff"/>
-              <circle cx="74.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+            <g id="eyeGroup" class="mascot-blink">
+              <g id="eyeL">
+                <ellipse cx="78" cy="99" rx="15" ry="18" fill="#fff"/>
+                <ellipse class="mascot-eye-pupil" id="pupilL" cx="78" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+                <circle cx="82.5" cy="94.5" r="3.4" fill="#fff"/>
+                <circle cx="74.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+              </g>
+              <g id="eyeR">
+                <ellipse cx="122" cy="99" rx="15" ry="18" fill="#fff"/>
+                <ellipse class="mascot-eye-pupil" id="pupilR" cx="122" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+                <circle cx="126.5" cy="94.5" r="3.4" fill="#fff"/>
+                <circle cx="118.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+              </g>
             </g>
-            <g id="eyeR">
-              <ellipse cx="122" cy="99" rx="15" ry="18" fill="#fff"/>
-              <ellipse class="mascot-eye-pupil" id="pupilR" cx="122" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
-              <circle cx="126.5" cy="94.5" r="3.4" fill="#fff"/>
-              <circle cx="118.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
-            </g>
-
-            <!-- أنف صغير -->
             <path d="M100 109 Q102 113 100 115" stroke="#E8B58C" stroke-width="2" fill="none" stroke-linecap="round" opacity=".6"/>
-
-            <!-- الفم -->
             <path id="mascotMouth" d="M90 123 Q100 129 110 123" stroke="#B8654F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
-
-            <!-- كتاب صغير بجانبه -->
             <g transform="translate(24,152)">
               <rect x="0" y="0" width="24" height="17" rx="3" fill="#FFC94A"/>
               <line x1="12" y1="2" x2="12" y2="15" stroke="#fff" stroke-width="2"/>
@@ -415,16 +419,27 @@
           </svg>
         </div>
 
-        <p class="welcome-hello">أهلاً بك! 👋</p>
+        <div class="speech-bubble" id="speechBubble">مرحباً بك! اختر اسمك لنبدأ رحلة الإنجاز اليومية ✨</div>
 
-        <label class="field-label" for="studentSelect">اختر اسمك من القائمة</label>
+        <label class="field-label" for="studentSelect">اختر اسمك من القائمة 👋</label>
         <div class="select-wrap" id="selectWrap">
           <select id="studentSelect" disabled>
             <option value="">جارٍ تحميل الأسماء…</option>
           </select>
         </div>
 
-        <button id="startBtn" class="btn-primary" disabled type="button">ابدأ 🚀</button>
+        <button id="startBtn" class="btn-primary" disabled type="button">🚀 ابدأ</button>
+      </div>
+
+      <div class="howto-box">
+        <div class="howto-title">💡 كيف أستخدم الموقع؟</div>
+        <ul class="howto-steps">
+          <li><span class="howto-num">1</span> اختر اسمك</li>
+          <li><span class="howto-num">2</span> اضغط ابدأ</li>
+          <li><span class="howto-num">3</span> أنجز واجباتك</li>
+          <li><span class="howto-num">4</span> أكد إنجازك</li>
+          <li><span class="howto-num">5</span> اجمع النقاط والأوسمة 🏅</li>
+        </ul>
       </div>
     </section>
 
@@ -436,7 +451,7 @@
       </div>
     </section>
 
-    <!-- ===== حالة الخطأ: لا اتصال بالإنترنت ===== -->
+    <!-- ===== خطأ: لا اتصال ===== -->
     <section id="screen-error-offline" class="screen hidden">
       <div class="state-card">
         <div class="state-emoji">📡</div>
@@ -446,7 +461,7 @@
       </div>
     </section>
 
-    <!-- ===== حالة الخطأ: لا توجد أسماء ===== -->
+    <!-- ===== خطأ: لا توجد أسماء ===== -->
     <section id="screen-error-empty" class="screen hidden">
       <div class="state-card">
         <div class="state-emoji">📭</div>
@@ -456,15 +471,67 @@
       </div>
     </section>
 
-    <!-- ===== شاشة المهام اليومية ===== -->
+    <!-- ===== الصفحة الثانية: صفحة التلميذ ===== -->
     <section id="screen-tasks" class="screen hidden">
 
       <div class="tasks-header">
-        <div>
-          <div class="student-hello" id="studentHello">أهلاً يا …</div>
-          <button class="change-student" id="changeStudentBtn" type="button">تغيير الاسم</button>
+        <div class="tasks-header-left">
+          <div class="mini-mascot-wrap" id="miniMascotWrap">
+            <svg id="mascotSvg2" class="mascot-idle" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="100" cy="190" rx="50" ry="7" fill="#DCEFF5"/>
+              <path d="M52 178 Q100 200 148 178 L140 138 Q100 154 60 138 Z" fill="#7FD9C4"/>
+              <path d="M34 96 Q28 34 100 22 Q172 34 166 96 Q166 55 100 50 Q34 55 34 96 Z" fill="#F6D896"/>
+              <circle cx="100" cy="98" r="60" fill="#FFEFE1"/>
+              <circle cx="41" cy="98" r="10" fill="#FFEFE1"/>
+              <circle cx="159" cy="98" r="10" fill="#FFEFE1"/>
+              <path d="M48 146 Q100 168 152 146 L152 162 Q100 184 48 162 Z" fill="#6FC6E8"/>
+              <path d="M48 150 Q100 171 152 150" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".55"/>
+              <path d="M48 156 Q100 177 152 156" stroke="#4FB6E8" stroke-width="2.5" fill="none" opacity=".4"/>
+              <path d="M36 90 Q38 40 100 30 Q162 40 164 90 Q150 66 128 76 Q116 56 100 74 Q84 56 72 76 Q50 66 36 90 Z" fill="#F9DEA1"/>
+              <path d="M36 90 Q31 116 42 138 Q37 112 44 90 Z" fill="#F9DEA1"/>
+              <path d="M164 90 Q169 116 158 138 Q163 112 156 90 Z" fill="#F9DEA1"/>
+              <ellipse id="cheekL2" cx="61" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
+              <ellipse id="cheekR2" cx="139" cy="114" rx="11" ry="7" fill="#FF9E9E" opacity=".5"/>
+              <path d="M66 78 Q78 71 91 77" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M109 77 Q122 71 134 78" stroke="#C99B57" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <g id="eyeGroup2" class="mascot-blink">
+                <g id="eyeL2">
+                  <ellipse cx="78" cy="99" rx="15" ry="18" fill="#fff"/>
+                  <ellipse class="mascot-eye-pupil" id="pupilL2" cx="78" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+                  <circle cx="82.5" cy="94.5" r="3.4" fill="#fff"/>
+                  <circle cx="74.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+                </g>
+                <g id="eyeR2">
+                  <ellipse cx="122" cy="99" rx="15" ry="18" fill="#fff"/>
+                  <ellipse class="mascot-eye-pupil" id="pupilR2" cx="122" cy="102" rx="10" ry="12.5" fill="#3B2A22"/>
+                  <circle cx="126.5" cy="94.5" r="3.4" fill="#fff"/>
+                  <circle cx="118.5" cy="107" r="1.7" fill="#fff" opacity=".85"/>
+                </g>
+              </g>
+              <path d="M100 109 Q102 113 100 115" stroke="#E8B58C" stroke-width="2" fill="none" stroke-linecap="round" opacity=".6"/>
+              <path id="mascotMouth2" d="M90 123 Q100 129 110 123" stroke="#B8654F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="student-hello" id="studentHello">👋 أهلاً يا …</div>
+            <div class="motivate-line" id="motivateLine">🌟 استمر، أنت تقوم بعمل رائع!</div>
+            <button class="change-student" id="changeStudentBtn" type="button">تغيير الاسم</button>
+          </div>
         </div>
         <div class="streak-pill">🔥 <span id="streakCount">0</span> يوم متتالي</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-emoji">💎</div>
+          <div class="stat-value" id="pointsValue">0</div>
+          <div class="stat-label">مجموع النقاط</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-emoji" id="rankEmojiSmall">🌱</div>
+          <div class="stat-value" id="rankNameSmall">المبتدئ</div>
+          <div class="stat-label">رتبتي الحالية</div>
+        </div>
       </div>
 
       <div class="progress-row" id="progressRow">
@@ -475,7 +542,7 @@
 
       <div id="celebrateAllMsg" class="celebrate-msg hidden">🎉 أحسنت! أنجزت كل مهامك، لا تنسَ الضغط على زر التأكيد ⭐</div>
 
-      <div class="task-card" data-task="wird">
+      <div class="task-card" data-task="wird" data-subject="quran">
         <div class="task-emoji">📖</div>
         <div class="task-info">
           <div class="task-title">حفظ الورد اليومي</div>
@@ -484,35 +551,57 @@
         <div class="task-check" data-check></div>
       </div>
 
-      <div class="task-card" data-task="tuhfa">
+      <div class="task-card" data-task="tuhfa" data-subject="tuhfa">
         <div class="task-emoji">📜</div>
         <div class="task-info">
-          <div class="task-title">حفظ تحفة الأطفال</div>
-          <div class="task-sub">أبيات جديدة</div>
+          <div class="task-title">حفظ الدرس المحدد</div>
+          <div class="task-sub">تحفة الأطفال</div>
         </div>
         <div class="task-check" data-check></div>
       </div>
 
-      <div class="task-card" data-task="irab">
+      <div class="task-card" data-task="irab" data-subject="nahw">
         <div class="task-emoji">✍️</div>
         <div class="task-info">
-          <div class="task-title">إعراب الجملة</div>
-          <div class="task-sub">الآجرومية</div>
+          <div class="task-title">إنجاز التمرين</div>
+          <div class="task-sub">النحو</div>
         </div>
         <div class="task-check" data-check></div>
       </div>
 
-      <button id="confirmBtn" class="btn-primary active confirm-btn" type="button">⭐ تأكيد وحفظ واجباتي</button>
-      <div id="lockedNotice" class="locked-notice hidden">✅ لقد سجّلت واجباتك لهذا اليوم، أحسنت! عد غدًا لمهام جديدة 🌟</div>
+      <div id="taskMsgBox" class="msg-box hidden"></div>
 
-      <div class="calendar-title">🗓️ آخر أيامك</div>
+      <button id="confirmBtn" class="btn-primary active confirm-btn" type="button">⭐ تأكيد وحفظ واجباتي اليومية</button>
+      <div id="lockedNotice" class="locked-notice hidden">🔒 لقد قمت بتأكيد واجباتك لهذا اليوم بالفعل.</div>
+
+      <div class="rank-card">
+        <div class="rank-emoji" id="rankEmoji">🌱</div>
+        <div class="rank-name" id="rankName">المبتدئ</div>
+        <div class="rank-next" id="rankNext">50 نقطة للوصول إلى المرتبة التالية</div>
+        <div class="rank-bar"><div class="rank-bar-fill" id="rankBarFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="calendar-title">📅 آخر أيامك</div>
       <div class="star-calendar" id="starCalendar"></div>
+      <div class="cal-legend">
+        <span><i style="background:#D9E2E6"></i> لا يوجد سجل</span>
+        <span><i style="background:var(--coral)"></i> 0 مهام</span>
+        <span><i style="background:var(--orange)"></i> مهمة واحدة</span>
+        <span><i style="background:var(--purple)"></i> مهمتان</span>
+        <span><i style="background:var(--green)"></i> 3/3</span>
+      </div>
+
+      <div class="section-title">🏅 أوسمتي</div>
+      <div id="badgesWrap"></div>
+
+      <div class="section-title">🗺️ رحلتي</div>
+      <ul class="journey-list" id="journeyList"></ul>
 
     </section>
 
   </main>
 
-  <footer class="tiny-note">رفقاء القرآن والنحو — صُنع بحب لطلاب العلم الصغار</footer>
+  <footer class="tiny-note">📖 رفقاء القرآن والنحو<br>صُنع بحب للصغار ❤️</footer>
 
   <!-- ===== نافذة دخول الأستاذ ===== -->
   <div id="teacherLoginModal" class="modal-backdrop hidden">
@@ -531,7 +620,7 @@
   <!-- ===== نافذة الاحتفال بعد التأكيد ===== -->
   <div id="celebrationOverlay" class="modal-backdrop hidden">
     <div class="modal-box celebration-box">
-      <div class="celebration-emoji">🎉</div>
+      <div class="celebration-emoji" id="celebrationEmoji">🎉</div>
       <h2 id="celebrationTitle">أحسنت!</h2>
       <p id="celebrationText">لقد سجّلت إنجازك لهذا اليوم ✨</p>
       <div class="celebration-stars" id="celebrationStars"></div>
@@ -539,34 +628,216 @@
     </div>
   </div>
 
-  <!-- ===== لوحة تحكم الأستاذ ===== -->
+  <!-- ===== نافذة اكتشاف وسام ===== -->
+  <div id="badgeUnlockOverlay" class="modal-backdrop badge-modal hidden">
+    <div class="modal-box">
+      <div class="badge-toast-emoji" id="badgeUnlockEmoji">🏅</div>
+      <h2>🎉 لقد اكتشفت وسامًا!</h2>
+      <p id="badgeUnlockName">اسم الوسام</p>
+      <button class="btn-primary active" id="badgeUnlockCloseBtn" type="button">رائع! ✨</button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       الصفحة الثالثة: لوحة تحكم الأستاذ
+       =================================================================== -->
   <div id="teacherDashboard" class="hidden">
-    <div class="dash-wrap">
-      <div class="dash-topbar">
-        <button class="btn-close-dash" id="closeDashBtn" type="button">إغلاق ✖</button>
-        <div class="dash-title">لوحة تحكم الأستاذ 🎓</div>
-      </div>
 
-      <div class="dash-toolbar">
-        <input type="search" id="dashSearch" placeholder="بحث عن اسم…">
-        <div class="seg-group" id="periodSeg">
-          <button class="seg-btn active" data-period="today" type="button">اليوم</button>
-          <button class="seg-btn" data-period="week" type="button">الأسبوع</button>
-          <button class="seg-btn" data-period="all" type="button">الكل</button>
+    <nav class="dash-sidebar" id="dashSidebar">
+      <div class="dash-sidebar-brand">📖 رفقاء القرآن والنحو</div>
+      <ul class="dash-nav" id="dashNav">
+        <li><button data-tab="overview" class="active" type="button">📊 لوحة التحكم</button></li>
+        <li><button data-tab="students" type="button">👥 التلاميذ</button></li>
+        <li><button data-tab="assignments" type="button">📚 الواجبات</button></li>
+        <li><button data-tab="schedule" type="button">🗓️ البرنامج الأسبوعي</button></li>
+        <li><button data-tab="attendance" type="button">🏫 الحضور والغياب</button></li>
+        <li><button data-tab="leaderboard" type="button">🏆 لوحة الصدارة</button></li>
+        <li><button data-tab="analytics" type="button">📈 الإحصائيات</button></li>
+        <li><button data-tab="badges" type="button">🏅 الأوسمة</button></li>
+        <li><button data-tab="settings" type="button">⚙️ الإعدادات</button></li>
+      </ul>
+      <div class="dash-sidebar-bottom">
+        <button class="btn-sm cancel" id="dashLogoutBtn" type="button" style="width:100%;">🚪 تسجيل الخروج</button>
+      </div>
+    </nav>
+
+    <div class="dash-main">
+      <div class="dash-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn-hamburger" id="dashHamburger" type="button">☰</button>
+          <div>
+            <h2 id="dashPageTitle">👋 أهلاً بك أستاذنا!</h2>
+            <div class="dash-date" id="dashDate"></div>
+          </div>
         </div>
-        <button class="btn-export" id="exportCsvBtn" type="button">⬇️ تصدير CSV</button>
+        <button class="btn-close-dash" id="closeDashBtn" type="button">إغلاق ✖</button>
       </div>
 
-      <div class="dash-grid">
+      <!-- ---- تبويب: لوحة التحكم ---- -->
+      <div class="dash-tab" id="tab-overview">
+        <div class="dash-cards" id="overviewCards"></div>
+        <div class="panel">
+          <h3>⚠️ يحتاجون إلى المتابعة</h3>
+          <div id="attentionList"><div class="empty-note">جارٍ التحميل…</div></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: التلاميذ ---- -->
+      <div class="dash-tab hidden" id="tab-students">
+        <div class="dash-toolbar">
+          <input type="search" id="studentsSearch" placeholder="🔍 بحث عن اسم…">
+        </div>
+        <div class="panel">
+          <div id="studentsTableWrap"><div class="empty-note">جارٍ التحميل…</div></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: الواجبات ---- -->
+      <div class="dash-tab hidden" id="tab-assignments">
+        <div class="panel">
+          <h3>➕ إضافة واجب جديد</h3>
+          <div class="form-row">
+            <label>عنوان الواجب</label>
+            <input type="text" id="asgTitle" placeholder="مثال: حفظ الورد اليومي">
+          </div>
+          <div class="form-row">
+            <label>المادة</label>
+            <select id="asgSubject">
+              <option value="quran">📖 القرآن الكريم</option>
+              <option value="tuhfa">📜 تحفة الأطفال</option>
+              <option value="nahw">✍️ النحو</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>وصف الواجب</label>
+            <textarea id="asgDesc" rows="2" placeholder="تفاصيل إضافية (اختياري)"></textarea>
+          </div>
+          <div class="form-row">
+            <label>التاريخ</label>
+            <input type="date" id="asgDate">
+          </div>
+          <button class="btn-export" id="asgAddBtn" type="button" style="width:100%;">➕ إضافة الواجب</button>
+        </div>
+        <div class="panel">
+          <h3>📚 الواجبات المسجّلة</h3>
+          <div id="assignmentsList"><div class="empty-note">لا توجد واجبات مسجّلة بعد</div></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: البرنامج الأسبوعي ---- -->
+      <div class="dash-tab hidden" id="tab-schedule">
+        <div class="panel">
+          <h3>➕ إضافة حصة</h3>
+          <div class="form-row">
+            <label>اليوم</label>
+            <select id="schDay">
+              <option>الأحد</option><option>الإثنين</option><option selected>الثلاثاء</option>
+              <option>الأربعاء</option><option selected>الخميس</option><option>الجمعة</option><option>السبت</option>
+            </select>
+          </div>
+          <div class="form-row"><label>المادة / الدرس</label><input type="text" id="schLesson" placeholder="مثال: تحفة الأطفال — الباب الثاني"></div>
+          <div class="form-row"><label>وقت البداية</label><input type="time" id="schTime"></div>
+          <button class="btn-export" id="schAddBtn" type="button" style="width:100%;">➕ إضافة إلى البرنامج</button>
+        </div>
+        <div class="panel">
+          <h3>🗓️ البرنامج الحالي</h3>
+          <div id="scheduleList"><div class="empty-note">لا يوجد برنامج مسجّل بعد</div></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: الحضور والغياب ---- -->
+      <div class="dash-tab hidden" id="tab-attendance">
+        <div class="panel">
+          <div class="attendance-toolbar">
+            <label style="font-weight:700;font-size:.85rem;">📅 اختر التاريخ:</label>
+            <input type="date" id="attDate">
+          </div>
+          <div id="attendanceList"><div class="empty-note">جارٍ التحميل…</div></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: لوحة الصدارة ---- -->
+      <div class="dash-tab hidden" id="tab-leaderboard">
+        <div class="dash-toolbar">
+          <input type="search" id="dashSearch" placeholder="بحث عن اسم…">
+          <div class="seg-group" id="periodSeg">
+            <button class="seg-btn active" data-period="today" type="button">📅 اليوم</button>
+            <button class="seg-btn" data-period="week" type="button">📆 الأسبوع</button>
+            <button class="seg-btn" data-period="all" type="button">🌍 الكل</button>
+          </div>
+          <button class="btn-export" id="exportCsvBtn" type="button">📊 CSV</button>
+          <button class="btn-export secondary" id="exportPdfBtn" type="button">📄 PDF</button>
+        </div>
         <div class="panel">
           <h3>🏆 لوحة الصدارة</h3>
           <div id="leaderboardWrap"><div class="empty-note">جارٍ التحميل…</div></div>
         </div>
-        <div class="panel">
-          <h3>📊 نسبة إنجاز كل مهمة (الفصل)</h3>
-          <div class="chart-bars" id="chartBars"></div>
+      </div>
+
+      <!-- ---- تبويب: الإحصائيات ---- -->
+      <div class="dash-tab hidden" id="tab-analytics">
+        <div class="dash-grid">
+          <div class="panel">
+            <h3>📊 نسبة إنجاز كل واجب</h3>
+            <div class="chart-bars" id="chartBars"></div>
+          </div>
+          <div class="panel">
+            <h3>🥧 توزيع إنجاز اليوم</h3>
+            <div id="pieChart"></div>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="panel">
+            <h3>📈 تطور الإنجاز عبر الأيام</h3>
+            <div id="lineChart"></div>
+          </div>
+          <div class="panel">
+            <h3>👥 نسبة الإنجاز حسب التلميذ</h3>
+            <div id="hbarChart"></div>
+          </div>
         </div>
       </div>
+
+      <!-- ---- تبويب: الأوسمة ---- -->
+      <div class="dash-tab hidden" id="tab-badges">
+        <div class="panel">
+          <h3>🏅 كل الأوسمة المتاحة</h3>
+          <div id="allBadgesList"></div>
+        </div>
+      </div>
+
+      <!-- ---- تبويب: الإعدادات ---- -->
+      <div class="dash-tab hidden" id="tab-settings">
+        <div class="panel">
+          <h3>⚙️ الإعدادات</h3>
+          <p style="color:var(--ink-soft);font-size:.85rem;line-height:1.8;">
+            لتغيير كلمة مرور الأستاذ، افتح Console بالمتصفح ونفّذ:<br>
+            <code>await sha256Hex("كلمة المرور الجديدة")</code><br>
+            ثم ضع الناتج في <code>CONFIG.TEACHER_PASSWORD_HASH</code> داخل script.js.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ملف التلميذ (Drawer) ===== -->
+  <div id="profileDrawerBackdrop" class="profile-backdrop hidden">
+    <div class="profile-drawer">
+      <div class="profile-top">
+        <button class="profile-close" id="profileCloseBtn" type="button">✖</button>
+        <span style="font-weight:800;font-size:.85rem;color:var(--ink-soft);">👤 ملف التلميذ</span>
+      </div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-stats">
+        <div class="stat-card"><div class="stat-emoji">💎</div><div class="stat-value" id="profilePoints">0</div><div class="stat-label">النقاط</div></div>
+        <div class="stat-card"><div class="stat-emoji">🔥</div><div class="stat-value" id="profileStreak">0</div><div class="stat-label">Streak</div></div>
+        <div class="stat-card"><div class="stat-emoji" id="profileRankEmoji">🌱</div><div class="stat-value" id="profileRankName">المبتدئ</div><div class="stat-label">الرتبة</div></div>
+        <div class="stat-card"><div class="stat-emoji">📚</div><div class="stat-value" id="profileCompletion">0%</div><div class="stat-label">نسبة الإنجاز</div></div>
+      </div>
+      <div class="section-title" style="margin-top:10px;">📈 تطور الإنجاز</div>
+      <div id="profileLineChart"></div>
+      <div class="section-title">🏅 الأوسمة المكتسبة</div>
+      <div id="profileBadges"></div>
     </div>
   </div>
 
