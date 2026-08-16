@@ -8,7 +8,7 @@
 
 /* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  SUPABASE_URL: "sb_publishable_tqKlsdOifnd3WhFcgnoazg_qSMoMrSf", // مثال: https://xxxxxxxx.supabase.co
+  SUPABASE_URL: "https://jgjebubnrfokeszlatcb.supabase.co", // مثال: https://xxxxxxxx.supabase.co
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnamVidWJucmZva2VzemxhdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxMzksImV4cCI6MjEwMjQ2MDEzOX0.6sujYqlPQX5o5SSrrz-Yx0TqVTdieVgButW5JCinZRY",
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
   HISTORY_DAYS: 370, // نطاق كافٍ لحساب النقاط التراكمية والأوسمة بشكل صحيح
