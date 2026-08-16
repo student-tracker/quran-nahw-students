@@ -1,62 +1,111 @@
 /* =========================================================================
    رفقاء القرآن والنحو — script.js
-   كل منطق الموقع: الاتصال بالشيت، التخزين الاحتياطي، الشخصية الكرتونية،
-   الكونفيتي، الرسم البياني، وتصدير CSV.
+   منطق الصفحات الثلاث: الرئيسية، التلميذ، الأستاذ.
+   البيانات الحيّة (الأسماء/الإنجاز اليومي/السجل التاريخي) تأتي من الـ Backend
+   (Google Apps Script)، بينما إدارة الواجبات/البرنامج/الحضور تُحفظ محليًا
+   في هذا الإصدار (localStorage) لحين ربطها بالـ Backend لاحقًا.
    ========================================================================= */
 
-/* ================== 1) الإعدادات (يجب تعديلها من طرفك) ================== */
+/* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  // رابط تطبيق الويب (Web App) الذي ستحصل عليه بعد نشر Code.gs
   WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyNPAeTY2nubR2C1v6kVQU65TSlaBa-3WUjnun_T_hOY2XlY7GABXgoq3bhI8AnNI-kHw/exec",
-
-  // "رمز الصف" - تخفيف بسيط جدًا وليس حماية حقيقية.
-  // سيكون ظاهرًا لأي شخص يفتح كود الموقع على GitHub.
   CLASS_CODE: "Anasjlab",
-
-  // تجزئة (SHA-256) لكلمة مرور الأستاذ - وليست كلمة المرور نفسها.
-  // هذه أيضًا حماية شكلية فقط (client-side) وليست حماية حقيقية،
-  // لأن أي شخص يمكنه قراءة كود JS ومحاولة كسر التجزئة نظريًا.
-  // لتوليد تجزئة كلمة مرورك: افتح Console بالمتصفح ونفّذ:
-  //   await sha256Hex("كلمة_المرور_التي_تريدها")
-  // (الدالة sha256Hex معرّفة أسفل هذا الملف)
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
-
-  HISTORY_DAYS: 14,          // عدد أيام تقويم النجوم
-  SYNC_RETRY_INTERVAL_MS: 20000, // محاولة مزامنة قائمة الانتظار كل 20 ثانية
+  HISTORY_DAYS: 370, // نطاق كافٍ لحساب النقاط التراكمية والأوسمة بشكل صحيح
+  SYNC_RETRY_INTERVAL_MS: 20000,
 };
 
 const TASKS = [
-  { key: "wird",  label: "حفظ الورد اليومي" },
-  { key: "tuhfa", label: "حفظ تحفة الأطفال" },
-  { key: "irab",  label: "إعراب الجملة" },
+  { key: "wird",  label: "حفظ الورد اليومي",  subject: "quran" },
+  { key: "tuhfa", label: "حفظ الدرس المحدد",   subject: "tuhfa" },
+  { key: "irab",  label: "إنجاز التمرين",      subject: "nahw"  },
 ];
+
+const POINTS_PER_TASK = 10;
+
+const RANKS = [
+  { min: 0,   max: 49,      emoji: "🌱", name: "المبتدئ" },
+  { min: 50,  max: 149,     emoji: "🌿", name: "المجتهد" },
+  { min: 150, max: 299,     emoji: "⭐", name: "المتقدم" },
+  { min: 300, max: 499,     emoji: "🌟", name: "المتميز" },
+  { min: 500, max: 799,     emoji: "🏆", name: "بطل الإنجاز" },
+  { min: 800, max: Infinity,emoji: "👑", name: "نجم رفقاء القرآن والنحو" },
+];
+
+const BADGE_DEFS = {
+  streak: [
+    { t: 1,   e: "🔥", n: "بداية المشوار" },
+    { t: 3,   e: "🔥", n: "المثابر الصغير" },
+    { t: 7,   e: "🔥", n: "أسبوع من الإنجاز" },
+    { t: 14,  e: "🔥", n: "أسبوعان من المثابرة" },
+    { t: 30,  e: "🔥", n: "شهر من الإنجاز" },
+    { t: 60,  e: "🔥", n: "المثابر بلا توقف" },
+    { t: 100, e: "👑", n: "أسطورة الاستمرارية" },
+  ],
+  quran: [
+    { t: 1,   e: "📖", n: "رفيق القرآن" },
+    { t: 5,   e: "🌱", n: "خطوة مباركة" },
+    { t: 10,  e: "🌿", n: "محب القرآن" },
+    { t: 25,  e: "⭐", n: "نجم القرآن" },
+    { t: 50,  e: "🌟", n: "صديق القرآن" },
+    { t: 100, e: "🏆", n: "بطل القرآن" },
+    { t: 250, e: "👑", n: "رفيق القرآن المميز" },
+  ],
+  tuhfa: [
+    { t: 1,  e: "📜", n: "بداية التحفة" },
+    { t: 5,  e: "🌱", n: "محب التحفة" },
+    { t: 10, e: "⭐", n: "رفيق التحفة" },
+    { t: 25, e: "🌟", n: "نجم التحفة" },
+    { t: 50, e: "🏆", n: "بطل التحفة" },
+  ],
+  nahw: [
+    { t: 1,   e: "✏️", n: "خطوتي الأولى في النحو" },
+    { t: 10,  e: "📝", n: "محب النحو" },
+    { t: 25,  e: "⭐", n: "نجم النحو" },
+    { t: 50,  e: "🌟", n: "بطل الإعراب" },
+    { t: 100, e: "🏆", n: "خبير النحو الصغير" },
+  ],
+};
+
+const GROUP_LABELS = {
+  streak: "🔥 أوسمة الاستمرارية", quran: "📖 أوسمة القرآن",
+  tuhfa: "📜 أوسمة تحفة الأطفال", nahw: "✍️ أوسمة النحو",
+};
+
+// أوسمة سرية (شروطها مرتبطة بالحضور — تُعرض دائمًا مقفلة إلى أن يُربط نظام
+// الحضور بالخادم؛ هذا يطابق فكرة الأوسمة السرية أصلًا: لا تُكشف شروطها للطفل)
+const SECRET_BADGES = [
+  "🏫 رفيق الدروس", "🌟 الحاضر المميز", "🏆 وفيّ لرحلتي",
+  "📖 رفيق الثلاثاء", "📚 رفيق الخميس", "💪 ما استسلمتش", "🌱 العودة القوية",
+];
+
+const MOTIVATE_LINES = [
+  "🌟 استمر، أنت تقوم بعمل رائع!", "💙 كل يوم خطوة جديدة نحو النجاح!",
+  "✨ رحلتك جميلة، تابعها بحماس!", "🚀 أنت أقرب لهدفك من الأمس!",
+];
+
+const TASK_MESSAGES = {
+  quran: ["🌟 أحسنت! واصل بهذا الحماس!", "📖 بارك الله فيك، إنجاز رائع!", "✨ ما شاء الله، استمر هكذا!"],
+  tuhfa: ["📚 رائع! أنت تتقدم كل يوم!", "📜 أحسنت! حفظ جميل!", "🌿 ممتاز، واصل التقدم!"],
+  nahw:  ["✨ ممتاز! بارك الله في اجتهادك!", "✍️ رائع! إعراب صحيح ومتقن!", "⭐ أحسنت في النحو!"],
+};
 
 /* ================== 2) أدوات عامة ================== */
 
 function todayStr() {
-  // نستخدم صيغة yyyy-MM-dd محليًا (بدون اعتماد على منطقة زمنية للسيرفر)
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-
 function dateStrDaysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-
 async function sha256Hex(text) {
   const enc = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
-// نعرّضها على window لتسهيل توليد التجزئة من الـ Console عند الإعداد
 window.sha256Hex = sha256Hex;
 
 function showToast(msg, ms = 2400) {
@@ -66,14 +115,28 @@ function showToast(msg, ms = 2400) {
   clearTimeout(showToast._timer);
   showToast._timer = setTimeout(() => t.classList.remove("show"), ms);
 }
-
 function setScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
   const target = document.getElementById(id);
   if (target) target.classList.remove("hidden");
+  // لا يظهر زر "الأستاذ" داخل صفحة التلميذ إطلاقًا
+  const teacherBtn = document.getElementById("teacherBtn");
+  if (teacherBtn) teacherBtn.classList.toggle("hidden", id === "screen-tasks");
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+}
+function pickRandom(arr, avoid) {
+  if (arr.length === 1) return arr[0];
+  let choice;
+  do { choice = arr[Math.floor(Math.random() * arr.length)]; } while (choice === avoid);
+  return choice;
+}
+function rankForPoints(points) {
+  return RANKS.find(r => points >= r.min && points <= r.max) || RANKS[0];
 }
 
-/* ================== 3) طبقة الاتصال بالشيت (GET/POST) ================== */
+/* ================== 3) طبقة الاتصال بالـ Backend ================== */
 
 async function apiGet(action, params = {}) {
   const url = new URL(CONFIG.WEB_APP_URL);
@@ -85,9 +148,7 @@ async function apiGet(action, params = {}) {
   if (data.error) throw new Error(data.error);
   return data;
 }
-
 async function apiPost(payload) {
-  // نستخدم text/plain لتفادي CORS Preflight مع Google Apps Script
   const res = await fetch(CONFIG.WEB_APP_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -99,22 +160,12 @@ async function apiPost(payload) {
   return data;
 }
 
-/* ================== 4) قائمة الانتظار المحلية (Sync Queue) ================== */
+/* ================== 4) قائمة الانتظار المحلية ================== */
 
 const QUEUE_KEY = "rq_sync_queue_v1";
-
-function readQueue() {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
-  catch { return []; }
-}
-function writeQueue(q) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-}
-function enqueueUpdate(item) {
-  const q = readQueue();
-  q.push(item);
-  writeQueue(q);
-}
+function readQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch { return []; } }
+function writeQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function enqueueUpdate(item) { const q = readQueue(); q.push(item); writeQueue(q); }
 
 async function flushQueue() {
   if (!navigator.onLine) return;
@@ -126,84 +177,77 @@ async function flushQueue() {
       const { __confirm, ...rest } = item;
       const action = __confirm ? "confirmAssignments" : "updateTask";
       await apiPost({ action, classCode: CONFIG.CLASS_CODE, ...rest });
-      // ملاحظة: إن كان السيرفر قد اعتبرها "مؤكَّدة مسبقًا" فهذا لا يغيّر شيئًا هنا،
-      // لأن الواجهة مقفلة أصلًا محليًا منذ لحظة التأكيد الأولى.
-    } catch (e) {
-      remaining.push(item); // نبقيها لمحاولة لاحقة
-    }
+    } catch (e) { remaining.push(item); }
   }
   writeQueue(remaining);
-  if (remaining.length === 0 && q.length > 0) {
-    showToast("✅ تمت مزامنة إنجازك المحفوظ محليًا");
-  }
+  if (remaining.length === 0 && q.length > 0) showToast("✅ تمت مزامنة إنجازك المحفوظ محليًا");
 }
-
 window.addEventListener("online", flushQueue);
 setInterval(flushQueue, CONFIG.SYNC_RETRY_INTERVAL_MS);
 
 /* ================== 5) الشخصية الكرتونية (Mascot) ================== */
 
-const Mascot = {
-  el: null, pupilL: null, pupilR: null, mouth: null,
-  eyeLCenter: { x: 78, y: 102 }, eyeRCenter: { x: 122, y: 102 },
-  maxOffset: 3.4,
+function createMascotController(ids) {
+  return {
+    el: null, pupilL: null, pupilR: null, mouth: null,
+    eyeLCenter: { x: 78, y: 102 }, eyeRCenter: { x: 122, y: 102 },
+    maxOffset: 3.4,
 
-  init() {
-    this.el = document.getElementById("mascotSvg");
-    this.pupilL = document.getElementById("pupilL");
-    this.pupilR = document.getElementById("pupilR");
-    this.mouth = document.getElementById("mascotMouth");
-  },
+    init() {
+      this.el = document.getElementById(ids.svg);
+      this.pupilL = document.getElementById(ids.pupilL);
+      this.pupilR = document.getElementById(ids.pupilR);
+      this.mouth = document.getElementById(ids.mouth);
+    },
+    lookAt(clientX, clientY) {
+      if (!this.el) return;
+      const rect = this.el.getBoundingClientRect();
+      const relX = ((clientX - rect.left) / rect.width) * 200;
+      const relY = ((clientY - rect.top) / rect.height) * 200;
+      [["pupilL", this.eyeLCenter], ["pupilR", this.eyeRCenter]].forEach(([key, center]) => {
+        const dx = relX - center.x, dy = relY - center.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const clamped = Math.min(this.maxOffset, dist / 8);
+        this[key].setAttribute("transform", `translate(${((dx / dist) * clamped).toFixed(2)},${((dy / dist) * clamped).toFixed(2)})`);
+      });
+    },
+    resetLook() {
+      if (!this.pupilL) return;
+      this.pupilL.setAttribute("transform", "translate(0,0)");
+      this.pupilR.setAttribute("transform", "translate(0,0)");
+    },
+    happy() {
+      if (!this.mouth) return;
+      this.mouth.setAttribute("d", "M86 121 Q100 140 114 121 Q100 132 86 121 Z");
+      this.mouth.setAttribute("fill", "#B8654F");
+      this.el.classList.remove("mascot-happy-jump");
+      void this.el.offsetWidth;
+      this.el.classList.add("mascot-happy-jump");
+    },
+    confused() {
+      if (!this.mouth) return;
+      this.mouth.setAttribute("d", "M92 127 Q100 122 108 127");
+      this.mouth.setAttribute("fill", "none");
+      this.resetLook();
+    },
+    neutral() {
+      if (!this.mouth) return;
+      this.mouth.setAttribute("d", "M90 123 Q100 129 110 123");
+      this.mouth.setAttribute("fill", "none");
+    },
+  };
+}
 
-  // يحرك بؤبؤ العين نحو نقطة (clientX/clientY) بشكل ديناميكي محسوب
-  lookAt(clientX, clientY) {
-    if (!this.el) return;
-    const rect = this.el.getBoundingClientRect();
-    // موقع المؤشر نسبيًا داخل الـ SVG (بمقياس viewBox 200x200)
-    const relX = ((clientX - rect.left) / rect.width) * 200;
-    const relY = ((clientY - rect.top) / rect.height) * 200;
-
-    [ ["pupilL", this.eyeLCenter], ["pupilR", this.eyeRCenter] ].forEach(([key, center]) => {
-      const dx = relX - center.x;
-      const dy = relY - center.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const clamped = Math.min(this.maxOffset, dist / 8);
-      const ox = (dx / dist) * clamped;
-      const oy = (dy / dist) * clamped;
-      this[key].setAttribute("transform", `translate(${ox.toFixed(2)},${oy.toFixed(2)})`);
-    });
-  },
-
-  resetLook() {
-    this.pupilL.setAttribute("transform", "translate(0,0)");
-    this.pupilR.setAttribute("transform", "translate(0,0)");
-  },
-
-  happy() {
-    this.mouth.setAttribute("d", "M86 121 Q100 140 114 121 Q100 132 86 121 Z");
-    this.mouth.setAttribute("fill", "#B8654F");
-    this.el.classList.remove("mascot-happy-jump");
-    void this.el.offsetWidth; // إعادة تشغيل الأنيميشن
-    this.el.classList.add("mascot-happy-jump");
-  },
-
-  confused() {
-    this.mouth.setAttribute("d", "M92 127 Q100 122 108 127");
-    this.mouth.setAttribute("fill", "none");
-    this.resetLook();
-  },
-
-  neutral() {
-    this.mouth.setAttribute("d", "M90 123 Q100 129 110 123");
-    this.mouth.setAttribute("fill", "none");
-  },
-};
+// شخصية شاشة الترحيب
+const Mascot = createMascotController({ svg: "mascotSvg", pupilL: "pupilL", pupilR: "pupilR", mouth: "mascotMouth" });
+// شخصية مصاحبة صغيرة داخل صفحة التلميذ (تتفاعل مع الإنجاز والأوسمة والترقية)
+const StudentMascot = createMascotController({ svg: "mascotSvg2", pupilL: "pupilL2", pupilR: "pupilR2", mouth: "mascotMouth2" });
 
 /* ================== 6) الكونفيتي ================== */
 
 function fireConfetti(count = 26) {
   const layer = document.getElementById("confettiLayer");
-  const colors = ["#4FB6E8", "#5FD3A3", "#FFC94A", "#FF9B6A", "#FF7A7A"];
+  const colors = ["#4FB6E8", "#5FD3A3", "#FFC94A", "#FF9B6A", "#FF7A7A", "#9B8CF2"];
   for (let i = 0; i < count; i++) {
     const c = document.createElement("div");
     c.className = "confetto";
@@ -219,35 +263,34 @@ function fireConfetti(count = 26) {
   }
 }
 
-/* ================== 7) حالة التطبيق ================== */
+/* ================== 7) حالة التطبيق (صفحة التلميذ) ================== */
 
 const State = {
   student: null,
   today: { wird: false, tuhfa: false, irab: false },
-  history: [], // [{date, wird, tuhfa, irab}]
+  history: [],
   streak: 0,
-  confirmed: false, // هل أكّد التلميذ واجباته لهذا اليوم؟ (بعد التأكيد لا يمكن التعديل)
+  confirmed: false,
+  totalPoints: 0, totalWird: 0, totalTuhfa: 0, totalNahw: 0,
+  lastMsgBySubject: {},
 };
 
 const STUDENT_KEY = "rq_selected_student_v1";
 
-/* ================== 8) تهيئة شاشة الترحيب ================== */
+/* ================== 8) الصفحة الرئيسية (الترحيب) ================== */
 
 async function initWelcomeScreen() {
   Mascot.init();
-
   const select = document.getElementById("studentSelect");
   const startBtn = document.getElementById("startBtn");
   const wrap = document.getElementById("selectWrap");
+  const bubble = document.getElementById("speechBubble");
 
-  // تفريق سلوك الشخصية بين الحاسوب (تتبع الماوس بشكل مستمر) والهاتف (تفاعل عند اللمس)
   const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
   if (!isTouchDevice) {
-    // على الحاسوب: العينان تتبعان حركة المؤشر خطوة بخطوة
     wrap.addEventListener("mousemove", (e) => Mascot.lookAt(e.clientX, e.clientY));
     wrap.addEventListener("mouseleave", () => Mascot.resetLook());
   } else {
-    // على الهاتف: تنظر الشخصية نحو موضع اللمس ثم تعود لوضعها الطبيعي
     wrap.addEventListener("touchstart", (e) => {
       const t = e.touches[0];
       if (t) Mascot.lookAt(t.clientX, t.clientY);
@@ -260,9 +303,12 @@ async function initWelcomeScreen() {
       startBtn.disabled = false;
       startBtn.classList.add("active");
       Mascot.happy();
+      bubble.innerHTML = `أهلاً بك يا <strong>${escapeHtml(select.value)}</strong>!<br>جاهز لإنجاز مهامك اليوم؟ اضغط ابدأ 🚀`;
+      fireConfetti(16);
     } else {
       startBtn.disabled = true;
       startBtn.classList.remove("active");
+      bubble.textContent = "مرحباً بك! اختر اسمك لنبدأ رحلة الإنجاز اليومية ✨";
     }
   });
 
@@ -279,17 +325,12 @@ async function initWelcomeScreen() {
     setScreen("screen-welcome");
   });
 
-  document.querySelectorAll("[data-retry]").forEach(btn => {
-    btn.addEventListener("click", loadNamesList);
-  });
+  document.querySelectorAll("[data-retry]").forEach(btn => btn.addEventListener("click", loadNamesList));
 
   await loadNamesList();
 
-  // إن كان هناك تلميذ محفوظ مسبقًا في هذا الجهاز، ندخل مباشرة لصفحة مهامه
   const savedStudent = localStorage.getItem(STUDENT_KEY);
-  if (savedStudent) {
-    enterStudentFlow(savedStudent);
-  }
+  if (savedStudent) enterStudentFlow(savedStudent);
 }
 
 async function loadNamesList() {
@@ -309,46 +350,31 @@ async function loadNamesList() {
     select.disabled = false;
     setScreen("screen-welcome");
   } catch (err) {
-    if (!navigator.onLine || (err && err.offline)) {
-      setScreen("screen-error-offline");
-    } else {
-      setScreen("screen-error-offline"); // فشل الاتصال بالشيت نعامله كخطأ اتصال أيضًا
-    }
+    setScreen("screen-error-offline");
     Mascot.init();
     Mascot.confused && Mascot.confused();
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[m]));
-}
-
-/* ================== 9) شاشة المهام اليومية ================== */
+/* ================== 9) الصفحة الثانية: صفحة التلميذ ================== */
 
 async function enterStudentFlow(name) {
   State.student = name;
   setScreen("screen-loading");
-  document.getElementById("studentHello").textContent = `أهلاً يا ${name} 🌟`;
+  document.getElementById("studentHello").textContent = `👋 أهلاً يا ${name}!`;
+  document.getElementById("motivateLine").textContent = pickRandom(MOTIVATE_LINES);
 
   try {
     await Promise.all([loadTodayState(), loadHistoryState()]);
-    renderTasksScreen();
-    setScreen("screen-tasks");
-    bindTaskCards();
-    await flushQueue();
+    finalizeStudentEntry();
   } catch (err) {
-    // في حال تعذّر الجلب، نحاول الاعتماد على أي نسخة محلية محفوظة كحد أدنى
     const cached = getLocalTodayCache(name);
     if (cached) {
       const { confirmed, ...todayVals } = cached;
       State.today = todayVals;
       State.confirmed = !!confirmed;
       State.history = [];
-      renderTasksScreen();
-      setScreen("screen-tasks");
-      bindTaskCards();
+      finalizeStudentEntry();
       showToast("⚠️ نعرض آخر بيانات محفوظة، لا يوجد اتصال حاليًا");
     } else {
       setScreen("screen-error-offline");
@@ -356,49 +382,166 @@ async function enterStudentFlow(name) {
   }
 }
 
+function finalizeStudentEntry() {
+  StudentMascot.init();
+  computeTotals();
+  renderTasksScreen();
+  setScreen("screen-tasks");
+  bindTaskCards();
+  flushQueue();
+}
+
 function localTodayCacheKey(name) { return `rq_today_cache_${name}_${todayStr()}`; }
 function getLocalTodayCache(name) {
-  try { return JSON.parse(localStorage.getItem(localTodayCacheKey(name))); }
-  catch { return null; }
+  try { return JSON.parse(localStorage.getItem(localTodayCacheKey(name))); } catch { return null; }
 }
-// نخزّن قيم المهام مع حالة "مؤكَّد" في نفس السجل المحلي حتى نمنع التعديل بعد إغلاق التطبيق وإعادة فتحه
 function setLocalTodayCache(name, todayObj, confirmed) {
   localStorage.setItem(localTodayCacheKey(name), JSON.stringify({ ...todayObj, confirmed: !!confirmed }));
 }
 
 async function loadTodayState() {
   const data = await apiGet("getToday", { student: State.student });
-  State.today = {
-    wird: !!data.wird,
-    tuhfa: !!data.tuhfa,
-    irab: !!data.irab,
-  };
+  State.today = { wird: !!data.wird, tuhfa: !!data.tuhfa, irab: !!data.irab };
   State.confirmed = !!data.confirmed;
   setLocalTodayCache(State.student, State.today, State.confirmed);
 }
-
 async function loadHistoryState() {
   const data = await apiGet("getHistory", { student: State.student, days: CONFIG.HISTORY_DAYS });
   State.history = data.history || [];
   computeStreak();
 }
 
+// الـ Streak: يكفي إنجاز مهمة واحدة على الأقل في اليوم لاعتباره يوم إنجاز
 function computeStreak() {
-  // نحسب أيام متتالية (بما فيها اليوم) أُنجزت فيها كل المهام الثلاث
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
-  const todayAll = State.today.wird && State.today.tuhfa && State.today.irab;
-  let streak = todayAll ? 1 : 0;
+  const todayDone = State.today.wird || State.today.tuhfa || State.today.irab;
+  let streak = (State.confirmed && todayDone) ? 1 : 0;
   let cursor = 1;
   while (true) {
     const ds = dateStrDaysAgo(cursor);
     const rec = map[ds];
-    if (rec && rec.wird && rec.tuhfa && rec.irab) {
-      streak++;
-      cursor++;
-    } else break;
+    if (rec && (rec.wird || rec.tuhfa || rec.irab)) { streak++; cursor++; } else break;
   }
   State.streak = streak;
+}
+
+// النقاط التراكمية: نجمعها من كل السجل التاريخي + اليوم إن كان مؤكَّدًا
+function computeTotals() {
+  const map = {};
+  State.history.forEach(h => { map[h.date] = h; });
+  if (State.confirmed) map[todayStr()] = { date: todayStr(), ...State.today };
+  let points = 0, w = 0, t = 0, n = 0;
+  Object.values(map).forEach(e => {
+    if (e.wird)  { w++; points += POINTS_PER_TASK; }
+    if (e.tuhfa) { t++; points += POINTS_PER_TASK; }
+    if (e.irab)  { n++; points += POINTS_PER_TASK; }
+  });
+  State.totalPoints = points; State.totalWird = w; State.totalTuhfa = t; State.totalNahw = n;
+}
+
+/* ---- الأوسمة: منطق عام قابل لإعادة الاستخدام في صفحة الأستاذ أيضًا ---- */
+function badgeGroupsForStats(totalWird, totalTuhfa, totalNahw, streak) {
+  const build = (defs, value) => defs.map(d => ({ id: `${d.n}`, emoji: d.e, name: d.n, earned: value >= d.t, threshold: d.t }));
+  return {
+    streak: build(BADGE_DEFS.streak, streak),
+    quran: build(BADGE_DEFS.quran, totalWird),
+    tuhfa: build(BADGE_DEFS.tuhfa, totalTuhfa),
+    nahw: build(BADGE_DEFS.nahw, totalNahw),
+  };
+}
+
+function earnedBadgesKey(name) { return `rq_badges_${name}`; }
+function getEarnedBadgesLocal(name) {
+  try { return JSON.parse(localStorage.getItem(earnedBadgesKey(name))) || []; } catch { return []; }
+}
+function setEarnedBadgesLocal(name, ids) { localStorage.setItem(earnedBadgesKey(name), JSON.stringify(ids)); }
+
+function renderBadgesAndJourney() {
+  const groups = badgeGroupsForStats(State.totalWird, State.totalTuhfa, State.totalNahw, State.streak);
+  const wrap = document.getElementById("badgesWrap");
+  let html = "";
+  Object.entries(groups).forEach(([key, items]) => {
+    html += `<div class="badges-group"><div class="badges-group-title">${GROUP_LABELS[key]}</div><div class="badges-grid">`;
+    items.forEach(b => {
+      html += `<div class="badge-item ${b.earned ? "" : "locked"}"><div class="b-emoji">${b.emoji}</div><div class="b-name">${escapeHtml(b.name)}</div></div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `<div class="badges-group"><div class="badges-group-title">🔒 أوسمة سرية</div><div class="badges-grid">`;
+  SECRET_BADGES.forEach(() => {
+    html += `<div class="badge-item secret locked"><div class="b-emoji">🔒</div><div class="b-name">وسام سري</div></div>`;
+  });
+  html += `</div></div>`;
+  wrap.innerHTML = html;
+
+  // نتحقق من أوسمة جديدة تم كسر حاجزها منذ آخر مرة (باستثناء الأوسمة السرية)
+  const allEarnedIds = [];
+  Object.values(groups).forEach(items => items.forEach(b => { if (b.earned) allEarnedIds.push(b.id); }));
+  const prevIds = getEarnedBadgesLocal(State.student);
+  const newlyEarned = allEarnedIds.filter(id => !prevIds.includes(id));
+  setEarnedBadgesLocal(State.student, allEarnedIds);
+
+  const rank = rankForPoints(State.totalPoints);
+  const rankIdx = RANKS.indexOf(rank);
+
+  const journeySteps = [
+    { label: "🌱 البداية", done: true },
+    { label: "⭐ 50 نقطة", done: State.totalPoints >= 50 },
+    { label: "🏅 أول وسام", done: allEarnedIds.length >= 1 },
+    { label: "🔥 7 أيام متتالية", done: State.streak >= 7 },
+    { label: "💎 250 نقطة", done: State.totalPoints >= 250 },
+    { label: "📖 إنجازات القرآن", done: State.totalWird >= 1 },
+    { label: "📜 تحفة الأطفال", done: State.totalTuhfa >= 1 },
+    { label: "✍️ النحو", done: State.totalNahw >= 1 },
+    { label: "🏆 مراحل متقدمة", done: rankIdx >= 4 },
+    { label: "👑 نجم رفقاء القرآن والنحو", done: rankIdx >= 5 },
+  ];
+  document.getElementById("journeyList").innerHTML = journeySteps.map(s => `
+    <li class="journey-item ${s.done ? "done" : ""}">
+      <div class="journey-dot">${s.done ? "✓" : "•"}</div>
+      <div class="journey-text">${s.label}</div>
+    </li>`).join("");
+
+  return newlyEarned.map(id => {
+    for (const items of Object.values(groups)) {
+      const found = items.find(b => b.id === id);
+      if (found) return found;
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function showBadgeUnlock(newBadges) {
+  if (!newBadges.length) return;
+  document.getElementById("badgeUnlockEmoji").textContent = newBadges[0].emoji;
+  document.getElementById("badgeUnlockName").textContent = newBadges.map(b => b.name).join("، ");
+  document.getElementById("badgeUnlockOverlay").classList.remove("hidden");
+  StudentMascot.happy();
+  fireConfetti(40);
+}
+
+function renderRankCard() {
+  const rank = rankForPoints(State.totalPoints);
+  const idx = RANKS.indexOf(rank);
+  document.getElementById("rankEmoji").textContent = rank.emoji;
+  document.getElementById("rankName").textContent = rank.name;
+  document.getElementById("rankEmojiSmall").textContent = rank.emoji;
+  document.getElementById("rankNameSmall").textContent = rank.name;
+  document.getElementById("pointsValue").textContent = State.totalPoints;
+
+  const next = RANKS[idx + 1];
+  const bar = document.getElementById("rankBarFill");
+  const nextEl = document.getElementById("rankNext");
+  if (next) {
+    const span = next.min - rank.min;
+    const progressed = State.totalPoints - rank.min;
+    bar.style.width = Math.min(100, Math.max(4, (progressed / span) * 100)) + "%";
+    nextEl.textContent = `${next.min - State.totalPoints} نقطة للوصول إلى مرتبة ${next.name} ${next.emoji}`;
+  } else {
+    bar.style.width = "100%";
+    nextEl.textContent = "وصلت لأعلى مرتبة! 👑";
+  }
 }
 
 function renderTasksScreen() {
@@ -410,21 +553,28 @@ function renderTasksScreen() {
     const done = !!State.today[t.key];
     card.classList.toggle("done", done);
     card.classList.toggle("locked", State.confirmed);
-    check.classList.toggle("checked", done);
-    check.textContent = done ? "✓" : "";
+    if (State.confirmed) {
+      // بعد التأكيد: ✅ للمنجز، ➖ لغير المنجز، بدون إمكانية تعديل
+      check.classList.remove("checked");
+      check.textContent = done ? "✅" : "➖";
+      check.style.background = "transparent";
+      check.style.border = "none";
+      check.style.fontSize = "1.3rem";
+    } else {
+      check.style.background = ""; check.style.border = ""; check.style.fontSize = "";
+      check.classList.toggle("checked", done);
+      check.textContent = done ? "✓" : "";
+    }
   });
 
   const doneCount = TASKS.filter(t => State.today[t.key]).length;
-  document.querySelectorAll(".progress-dot").forEach((dot, i) => {
-    dot.classList.toggle("done", i < doneCount);
-  });
+  document.querySelectorAll(".progress-dot").forEach((dot, i) => dot.classList.toggle("done", i < doneCount));
 
   const confirmBtn = document.getElementById("confirmBtn");
   const lockedNotice = document.getElementById("lockedNotice");
   const hintMsg = document.getElementById("celebrateAllMsg");
 
   if (State.confirmed) {
-    // بعد التأكيد: لا يمكن التعديل ولا التأكيد مرة أخرى في نفس اليوم
     confirmBtn.classList.add("hidden");
     lockedNotice.classList.remove("hidden");
     hintMsg.classList.add("hidden");
@@ -434,7 +584,9 @@ function renderTasksScreen() {
     hintMsg.classList.toggle("hidden", doneCount < 3);
   }
 
+  renderRankCard();
   renderStarCalendar();
+  renderBadgesAndJourney();
 }
 
 function renderStarCalendar() {
@@ -442,25 +594,23 @@ function renderStarCalendar() {
   wrap.innerHTML = "";
   const map = {};
   State.history.forEach(h => { map[h.date] = h; });
-
   const days = [];
   for (let i = CONFIG.HISTORY_DAYS - 1; i >= 0; i--) days.push(dateStrDaysAgo(i));
-
+  // نعرض فقط آخر 14 يومًا في الشريط (لتفادي شريط طويل جدًا) رغم أن الحساب يغطي فترة أوسع
+  const visibleDays = days.slice(-14);
   const weekdayFmt = new Intl.DateTimeFormat("ar", { weekday: "short" });
 
-  days.forEach(ds => {
+  visibleDays.forEach(ds => {
     const isToday = ds === todayStr();
-    const rec = isToday ? State.today : map[ds];
-    let cls = "empty";
+    const rec = isToday ? (State.confirmed ? State.today : null) : map[ds];
+    let cls = "none";
     if (rec) {
       const doneCount = [rec.wird, rec.tuhfa, rec.irab].filter(Boolean).length;
-      if (doneCount === 3) cls = "full";
-      else if (doneCount > 0) cls = "partial";
+      cls = doneCount === 3 ? "three" : doneCount === 2 ? "two" : doneCount === 1 ? "one" : "zero";
     }
     const dayCol = document.createElement("div");
     dayCol.className = "cal-day";
-    const label = weekdayFmt.format(new Date(ds));
-    dayCol.innerHTML = `<div class="cal-dot ${cls}" title="${ds}"></div><div class="cal-label">${label}</div>`;
+    dayCol.innerHTML = `<div class="cal-dot ${cls}" title="${ds}"></div><div class="cal-label">${weekdayFmt.format(new Date(ds))}</div>`;
     wrap.appendChild(dayCol);
   });
 }
@@ -468,62 +618,65 @@ function renderStarCalendar() {
 function bindTaskCards() {
   document.querySelectorAll(".task-card").forEach(card => {
     const key = card.dataset.task;
+    const subject = card.dataset.subject;
     const check = card.querySelector("[data-check]");
-    // نزيل أي مستمعين سابقين عبر استنساخ العنصر (لتفادي تكرار الربط عند إعادة الدخول)
     const newCheck = check.cloneNode(true);
     check.replaceWith(newCheck);
-    newCheck.addEventListener("click", () => onToggleTask(key, card, newCheck));
+    newCheck.addEventListener("click", () => onToggleTask(key, subject));
   });
-
   const confirmBtn = document.getElementById("confirmBtn");
   const newConfirmBtn = confirmBtn.cloneNode(true);
   confirmBtn.replaceWith(newConfirmBtn);
   newConfirmBtn.addEventListener("click", onConfirmAssignments);
 }
 
-// عند الضغط على مربع المهمة: هذا مجرد اختيار مؤقت (محلي) فقط،
-// لا يُرسَل أي شيء للسيرفر إلا بعد الضغط على زر "تأكيد وحفظ واجباتي"
-function onToggleTask(key, card, checkEl) {
-  if (State.confirmed) return; // مقفل بعد التأكيد، لا يمكن التعديل
+function onToggleTask(key, subject) {
+  if (State.confirmed) return;
   const newValue = !State.today[key];
   State.today[key] = newValue;
   setLocalTodayCache(State.student, State.today, State.confirmed);
   renderTasksScreen();
+
+  const msgBox = document.getElementById("taskMsgBox");
+  if (newValue) {
+    const msg = pickRandom(TASK_MESSAGES[subject], State.lastMsgBySubject[subject]);
+    State.lastMsgBySubject[subject] = msg;
+    msgBox.textContent = msg;
+    msgBox.classList.remove("hidden");
+    StudentMascot.happy();
+  } else {
+    msgBox.classList.add("hidden");
+    StudentMascot.neutral();
+  }
 }
 
-/* ================== 9ب) تأكيد الواجبات وحفظها ================== */
+/* ================== 9ب) تأكيد الواجبات (لا يمكن التراجع بعده) ================== */
 
 async function onConfirmAssignments() {
   if (State.confirmed) return;
-
   const confirmBtn = document.getElementById("confirmBtn");
   confirmBtn.disabled = true;
   const originalLabel = confirmBtn.textContent;
   confirmBtn.textContent = "جارٍ الحفظ…";
 
   const payload = {
-    studentName: State.student,
-    wird: State.today.wird,
-    tuhfa: State.today.tuhfa,
-    irab: State.today.irab,
-    date: todayStr(),
-    clientTimestamp: new Date().toISOString(),
+    studentName: State.student, wird: State.today.wird, tuhfa: State.today.tuhfa,
+    irab: State.today.irab, date: todayStr(), clientTimestamp: new Date().toISOString(),
   };
 
   try {
     if (!navigator.onLine) throw new Error("offline");
     const res = await apiPost({ action: "confirmAssignments", classCode: CONFIG.CLASS_CODE, ...payload });
     if (res && res.alreadyConfirmed) {
-      // تم التأكيد مسبقًا (مثلاً من جهاز آخر) — نقفل الواجهة دون احتفال جديد
       State.confirmed = true;
       setLocalTodayCache(State.student, State.today, true);
+      computeTotals();
       renderTasksScreen();
       showToast("لقد قمت بتسجيل واجباتك مسبقًا اليوم ✅");
     } else {
       handleConfirmSuccess(false);
     }
   } catch (e) {
-    // فشل الإرسال (لا اتصال): نحفظ طلب التأكيد في قائمة الانتظار ونقفل الواجهة محليًا بتفاؤل
     enqueueUpdate({ ...payload, __confirm: true });
     handleConfirmSuccess(true);
     showToast("💾 لا يوجد اتصال، سيتم إرسال تأكيدك تلقائيًا عند عودة الاتصال");
@@ -537,71 +690,139 @@ function handleConfirmSuccess(offline) {
   State.confirmed = true;
   setLocalTodayCache(State.student, State.today, true);
 
-  // نضيف يوم اليوم إلى السجل المحلي فورًا حتى يُحتسب في الـ Streak دون انتظار إعادة تحميل
   const idx = State.history.findIndex(h => h.date === todayStr());
   const todayRecord = { date: todayStr(), ...State.today };
-  if (idx >= 0) State.history[idx] = todayRecord;
-  else State.history.push(todayRecord);
+  if (idx >= 0) State.history[idx] = todayRecord; else State.history.push(todayRecord);
+
+  const prevRankIdx = RANKS.indexOf(rankForPoints(State.totalPoints));
 
   computeStreak();
+  computeTotals();
   renderTasksScreen();
 
-  if (!offline) fireConfetti(60);
+  const doneCount = TASKS.filter(t => State.today[t.key]).length;
+  StudentMascot.happy();
+  if (!offline) fireConfetti(doneCount === 3 ? 70 : 40);
   showCelebration();
+
+  const newBadges = renderBadgesAndJourney();
+  if (newBadges.length) setTimeout(() => showBadgeUnlock(newBadges), 900);
+
+  // 👑 هل ارتقى التلميذ إلى رتبة جديدة؟
+  const newRankIdx = RANKS.indexOf(rankForPoints(State.totalPoints));
+  if (newRankIdx > prevRankIdx) {
+    const rank = RANKS[newRankIdx];
+    setTimeout(() => {
+      StudentMascot.happy();
+      fireConfetti(50);
+      showToast(`👑 لقد ارتقيت إلى مرتبة ${rank.name} ${rank.emoji}`, 3200);
+    }, newBadges.length ? 1900 : 900);
+  }
 }
 
 function showCelebration() {
   const doneCount = TASKS.filter(t => State.today[t.key]).length;
   const stars = "⭐".repeat(doneCount) + "☆".repeat(3 - doneCount);
   document.getElementById("celebrationStars").textContent = stars;
-
+  const emoji = document.getElementById("celebrationEmoji");
   const title = document.getElementById("celebrationTitle");
   const text = document.getElementById("celebrationText");
-  if (doneCount === 3) {
-    title.textContent = "ما شاء الله! 🎉";
-    text.textContent = "أنجزت كل واجباتك اليوم، أحسنت يا بطل! 🌟";
-  } else if (doneCount > 0) {
-    title.textContent = "أحسنت! 👏";
-    text.textContent = "لقد سُجّل إنجازك لهذا اليوم، واصل هكذا غدًا!";
+
+  if (doneCount === 0) {
+    emoji.textContent = "💙";
+    title.textContent = "لا بأس يا بطل!";
+    text.textContent = "اليوم لم تنجز أي مهمة، لكن غداً فرصة جديدة لتبدأ من جديد! 🌱";
+  } else if (doneCount === 1) {
+    emoji.textContent = "🌟";
+    title.textContent = "بداية جميلة!";
+    text.textContent = "أنجزت مهمة واحدة اليوم، واصل المحاولة لتحقق المزيد غداً! 💪";
+  } else if (doneCount === 2) {
+    emoji.textContent = "⭐";
+    title.textContent = "رائع جداً!";
+    text.textContent = "أنجزت مهمتين اليوم، بقيت خطوة واحدة فقط نحو الإنجاز الكامل! 🚀";
   } else {
-    title.textContent = "تم التسجيل";
-    text.textContent = "سُجّل يومك، حاول إنجاز مهامك غدًا بإذن الله 🌱";
+    emoji.textContent = "🎉";
+    title.textContent = "يا لها من نتيجة رائعة!";
+    text.textContent = "أنجزت جميع مهامك اليوم! أنت بطل الإنجاز! 🏆✨";
   }
   document.getElementById("celebrationOverlay").classList.remove("hidden");
 }
 
-/* ================== 10) واجهة الأستاذ ================== */
+/* ================== 10) صفحة الأستاذ ================== */
 
 const Teacher = {
-  loggedIn: false,
-  records: [],   // كل السجلات من getRecords
-  students: [],  // كل الأسماء
-  period: "today",
-  sortKey: "name",
-  sortDir: "asc",
+  loggedIn: false, records: [], students: [], period: "today", activeTab: "overview", selectedStudent: null,
 };
+
+/* ---- تخزين محلي لإدارة الواجبات/البرنامج/الحضور (لحين ربطها بالخادم) ---- */
+const LS_ASSIGNMENTS = "rq_teacher_assignments";
+const LS_SCHEDULE = "rq_teacher_schedule";
+const LS_ATTENDANCE = "rq_teacher_attendance";
+function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 function initTeacherUI() {
   document.getElementById("teacherBtn").addEventListener("click", openTeacherLogin);
   document.getElementById("teacherCancelBtn").addEventListener("click", closeTeacherLogin);
   document.getElementById("teacherConfirmBtn").addEventListener("click", attemptTeacherLogin);
-  document.getElementById("teacherPassInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") attemptTeacherLogin();
+  document.getElementById("teacherPassInput").addEventListener("keydown", (e) => { if (e.key === "Enter") attemptTeacherLogin(); });
+  document.getElementById("closeDashBtn").addEventListener("click", () => document.getElementById("teacherDashboard").classList.add("hidden"));
+  document.getElementById("dashLogoutBtn").addEventListener("click", () => { Teacher.loggedIn = false; document.getElementById("teacherDashboard").classList.add("hidden"); });
+
+  document.getElementById("dashHamburger").addEventListener("click", () => document.getElementById("dashSidebar").classList.toggle("open"));
+
+  document.querySelectorAll("#dashNav button").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
-  document.getElementById("closeDashBtn").addEventListener("click", () => {
-    document.getElementById("teacherDashboard").classList.add("hidden");
-  });
+
   document.getElementById("dashSearch").addEventListener("input", renderLeaderboard);
+  document.getElementById("studentsSearch").addEventListener("input", renderStudentsTable);
   document.querySelectorAll("#periodSeg .seg-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#periodSeg .seg-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       Teacher.period = btn.dataset.period;
-      renderLeaderboard();
-      renderChart();
+      renderLeaderboard(); renderAnalytics();
     });
   });
   document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+  document.getElementById("exportPdfBtn").addEventListener("click", exportPdf);
+  document.getElementById("profileCloseBtn").addEventListener("click", () => document.getElementById("profileDrawerBackdrop").classList.add("hidden"));
+
+  // إدارة الواجبات
+  document.getElementById("asgAddBtn").addEventListener("click", addAssignment);
+  // البرنامج الأسبوعي
+  document.getElementById("schAddBtn").addEventListener("click", addScheduleItem);
+  // الحضور
+  const attDate = document.getElementById("attDate");
+  attDate.value = todayStr();
+  attDate.addEventListener("change", renderAttendance);
+
+  document.getElementById("badgeUnlockCloseBtn").addEventListener("click", () => document.getElementById("badgeUnlockOverlay").classList.add("hidden"));
+}
+
+function switchTab(tab) {
+  Teacher.activeTab = tab;
+  document.querySelectorAll("#dashNav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".dash-tab").forEach(t => t.classList.add("hidden"));
+  document.getElementById(`tab-${tab}`).classList.remove("hidden");
+  document.getElementById("dashSidebar").classList.remove("open");
+
+  const titles = {
+    overview: "📊 لوحة التحكم", students: "👥 التلاميذ", assignments: "📚 الواجبات",
+    schedule: "🗓️ البرنامج الأسبوعي", attendance: "🏫 الحضور والغياب", leaderboard: "🏆 لوحة الصدارة",
+    analytics: "📈 الإحصائيات", badges: "🏅 الأوسمة", settings: "⚙️ الإعدادات",
+  };
+  document.getElementById("dashPageTitle").textContent = titles[tab] || "";
+
+  if (tab === "overview") renderOverview();
+  else if (tab === "students") renderStudentsTable();
+  else if (tab === "assignments") renderAssignmentsList();
+  else if (tab === "schedule") renderScheduleList();
+  else if (tab === "attendance") renderAttendance();
+  else if (tab === "leaderboard") renderLeaderboard();
+  else if (tab === "analytics") renderAnalytics();
+  else if (tab === "badges") renderAllBadgesTab();
 }
 
 function openTeacherLogin() {
@@ -610,9 +831,7 @@ function openTeacherLogin() {
   document.getElementById("teacherLoginError").textContent = "";
   document.getElementById("teacherPassInput").focus();
 }
-function closeTeacherLogin() {
-  document.getElementById("teacherLoginModal").classList.add("hidden");
-}
+function closeTeacherLogin() { document.getElementById("teacherLoginModal").classList.add("hidden"); }
 
 async function attemptTeacherLogin() {
   const val = document.getElementById("teacherPassInput").value;
@@ -628,70 +847,166 @@ async function attemptTeacherLogin() {
 
 async function openTeacherDashboard() {
   document.getElementById("teacherDashboard").classList.remove("hidden");
-  document.getElementById("leaderboardWrap").innerHTML = `<div class="empty-note">جارٍ التحميل…</div>`;
+  document.getElementById("dashDate").textContent = new Intl.DateTimeFormat("ar-MA", { weekday: "long", year: "numeric", month: "long", day: "numeric" }).format(new Date());
   try {
     const data = await apiGet("getRecords", { classCode: CONFIG.CLASS_CODE });
     Teacher.records = data.records || [];
     Teacher.students = data.students || [];
-    renderLeaderboard();
-    renderChart();
+    switchTab("overview");
   } catch (e) {
-    document.getElementById("leaderboardWrap").innerHTML = `<div class="empty-note">تعذّر جلب البيانات، تحقق من الاتصال</div>`;
+    document.getElementById("overviewCards").innerHTML = `<div class="empty-note">تعذّر جلب البيانات، تحقق من الاتصال</div>`;
   }
 }
 
 function filteredRecordsForPeriod() {
-  const today = todayStr();
-  const weekAgo = dateStrDaysAgo(6);
+  const today = todayStr(), weekAgo = dateStrDaysAgo(6);
   return Teacher.records.filter(r => {
     if (Teacher.period === "today") return r.date === today;
     if (Teacher.period === "week") return r.date >= weekAgo && r.date <= today;
-    return true; // all
+    return true;
   });
 }
 
+function studentStatsFromRecords(name) {
+  const recs = Teacher.records.filter(r => r.studentName === name).sort((a, b) => a.date.localeCompare(b.date));
+  let points = 0, w = 0, t = 0, n = 0;
+  recs.forEach(r => { if (r.wird) { w++; points += 10; } if (r.tuhfa) { t++; points += 10; } if (r.irab) { n++; points += 10; } });
+
+  // streak: من اليوم إلى الوراء عبر السجلات المتوفرة
+  const map = {}; recs.forEach(r => { map[r.date] = r; });
+  let streak = 0, cursor = 0;
+  while (true) {
+    const ds = dateStrDaysAgo(cursor);
+    const rec = map[ds];
+    if (rec && (rec.wird || rec.tuhfa || rec.irab)) { streak++; cursor++; } else break;
+  }
+  const lastActive = recs.length ? recs[recs.length - 1].date : null;
+  const daysSince = lastActive ? Math.round((new Date(todayStr()) - new Date(lastActive)) / 86400000) : 999;
+  const totalTasks = recs.length * 3;
+  const doneTasks = w + t + n;
+  const completion = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  return { name, points, wird: w, tuhfa: t, irab: n, streak, daysSince, completion, records: recs };
+}
+
+/* ---- تبويب: لوحة التحكم (Overview) ---- */
+function renderOverview() {
+  const today = todayStr();
+  const total = Teacher.students.length;
+  const completedToday = Teacher.students.filter(s => Teacher.records.some(r => r.studentName === s && r.date === today && (r.wird || r.tuhfa || r.irab))).length;
+  const streakHolders = Teacher.students.filter(s => studentStatsFromRecords(s).streak >= 1).length;
+  const needAttention = Teacher.students.filter(s => studentStatsFromRecords(s).daysSince >= 3);
+
+  const attToday = lsGet(LS_ATTENDANCE, {})[today] || null;
+  const presentCount = attToday ? Object.values(attToday).filter(v => v === "present").length : null;
+
+  const cards = [
+    { emoji: "👥", value: total, label: "التلاميذ" },
+    { emoji: "✅", value: `${completedToday}/${total}`, label: "أنجزوا اليوم" },
+    { emoji: "🔥", value: streakHolders, label: "لديهم Streak" },
+    { emoji: "🏫", value: attToday ? `${presentCount}/${total}` : "لم يُسجَّل بعد", label: "الحاضرون" },
+    { emoji: "⚠️", value: needAttention.length, label: "يحتاجون للمتابعة", alert: needAttention.length > 0 },
+  ];
+  document.getElementById("overviewCards").innerHTML = cards.map(c => `
+    <div class="dcard ${c.alert ? "alert" : ""}">
+      <div class="dc-emoji">${c.emoji}</div>
+      <div class="dc-value">${c.value}</div>
+      <div class="dc-label">${c.label}</div>
+    </div>`).join("");
+
+  const attnWrap = document.getElementById("attentionList");
+  if (!needAttention.length) {
+    attnWrap.innerHTML = `<div class="empty-note">لا يوجد تلاميذ بحاجة للمتابعة 🎉</div>`;
+  } else {
+    attnWrap.innerHTML = needAttention.map(name => {
+      const st = studentStatsFromRecords(name);
+      return `<div class="attn-item">
+        <span class="attn-name">🔴 ${escapeHtml(name)}</span>
+        <span class="attn-days">لم يسجل أي إنجاز منذ ${st.daysSince >= 999 ? "فترة طويلة" : st.daysSince + " أيام"}</span>
+        <button class="icon-btn" data-open-profile="${escapeHtml(name)}">👤</button>
+      </div>`;
+    }).join("");
+    attnWrap.querySelectorAll("[data-open-profile]").forEach(btn => btn.addEventListener("click", () => openStudentProfile(btn.dataset.openProfile)));
+  }
+}
+
+/* ---- تبويب: التلاميذ ---- */
+function renderStudentsTable() {
+  const search = (document.getElementById("studentsSearch").value || "").trim();
+  const names = Teacher.students.filter(n => !search || n.includes(search));
+  const wrap = document.getElementById("studentsTableWrap");
+  if (!names.length) { wrap.innerHTML = `<div class="empty-note">لا توجد نتائج</div>`; return; }
+
+  let html = `<table class="students-table"><thead><tr>
+    <th>التلميذ</th><th>إنجاز اليوم</th><th>Streak</th><th>النقاط</th><th>الرتبة</th><th>الحالة</th>
+  </tr></thead><tbody>`;
+  const today = todayStr();
+  names.forEach(name => {
+    const st = studentStatsFromRecords(name);
+    const rank = rankForPoints(st.points);
+    const todayRec = Teacher.records.find(r => r.studentName === name && r.date === today);
+    const todayCount = todayRec ? [todayRec.wird, todayRec.tuhfa, todayRec.irab].filter(Boolean).length : 0;
+    const warn = st.daysSince >= 3;
+    html += `<tr data-name="${escapeHtml(name)}">
+      <td class="name-tag">${escapeHtml(name)}</td>
+      <td>${todayCount}/3</td>
+      <td>🔥 ${st.streak}</td>
+      <td>💎 ${st.points}</td>
+      <td>${rank.emoji} ${rank.name}</td>
+      <td><span class="status-pill ${warn ? "warn" : "ok"}">${warn ? "⚠️ متابعة" : "✅ جيد"}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+  wrap.querySelectorAll("tr[data-name]").forEach(row => row.addEventListener("click", () => openStudentProfile(row.dataset.name)));
+}
+
+/* ---- ملف التلميذ (Drawer) ---- */
+function openStudentProfile(name) {
+  Teacher.selectedStudent = name;
+  const st = studentStatsFromRecords(name);
+  const rank = rankForPoints(st.points);
+  document.getElementById("profileName").textContent = `👤 ${name}`;
+  document.getElementById("profilePoints").textContent = st.points;
+  document.getElementById("profileStreak").textContent = st.streak;
+  document.getElementById("profileRankEmoji").textContent = rank.emoji;
+  document.getElementById("profileRankName").textContent = rank.name;
+  document.getElementById("profileCompletion").textContent = st.completion + "%";
+
+  const last14 = st.records.slice(-14);
+  document.getElementById("profileLineChart").innerHTML = sparklineSvg(last14.map(r => [r.wird, r.tuhfa, r.irab].filter(Boolean).length / 3 * 100));
+
+  const groups = badgeGroupsForStats(st.wird, st.tuhfa, st.irab, st.streak);
+  let bhtml = "";
+  Object.entries(groups).forEach(([key, items]) => {
+    const earned = items.filter(b => b.earned);
+    if (!earned.length) return;
+    bhtml += `<div class="badges-group"><div class="badges-group-title">${GROUP_LABELS[key]}</div><div class="badges-grid">`;
+    earned.forEach(b => { bhtml += `<div class="badge-item"><div class="b-emoji">${b.emoji}</div><div class="b-name">${escapeHtml(b.name)}</div></div>`; });
+    bhtml += `</div></div>`;
+  });
+  document.getElementById("profileBadges").innerHTML = bhtml || `<div class="empty-note">لا توجد أوسمة بعد</div>`;
+
+  document.getElementById("profileDrawerBackdrop").classList.remove("hidden");
+}
+
+/* ---- تبويب: لوحة الصدارة ---- */
 function buildLeaderboardRows() {
   const recs = filteredRecordsForPeriod();
   const byStudent = {};
-  Teacher.students.forEach(name => {
-    byStudent[name] = { name, wird: 0, tuhfa: 0, irab: 0, lastDate: null };
-  });
+  Teacher.students.forEach(name => { byStudent[name] = { name, wird: 0, tuhfa: 0, irab: 0 }; });
   recs.forEach(r => {
-    if (!byStudent[r.studentName]) byStudent[r.studentName] = { name: r.studentName, wird: 0, tuhfa: 0, irab: 0, lastDate: null };
+    if (!byStudent[r.studentName]) byStudent[r.studentName] = { name: r.studentName, wird: 0, tuhfa: 0, irab: 0 };
     const row = byStudent[r.studentName];
-    if (r.wird) row.wird++;
-    if (r.tuhfa) row.tuhfa++;
-    if (r.irab) row.irab++;
-    if (!row.lastDate || r.date > row.lastDate) row.lastDate = r.date;
+    if (r.wird) row.wird++; if (r.tuhfa) row.tuhfa++; if (r.irab) row.irab++;
   });
-
-  // آخر يوم أُنجزت فيه أي مهمة (من كل السجلات وليس فقط الفترة) لتحديد "لم ينجز منذ 3 أيام"
-  const lastActiveAll = {};
-  Teacher.records.forEach(r => {
-    if (r.wird || r.tuhfa || r.irab) {
-      if (!lastActiveAll[r.studentName] || r.date > lastActiveAll[r.studentName]) {
-        lastActiveAll[r.studentName] = r.date;
-      }
-    }
-  });
-
-  const today = todayStr();
   const rows = Object.values(byStudent).map(row => {
     row.score = row.wird + row.tuhfa + row.irab;
-    const lastActive = lastActiveAll[row.name];
-    let daysSince = null;
-    if (lastActive) {
-      daysSince = Math.round((new Date(today) - new Date(lastActive)) / 86400000);
-    } else {
-      daysSince = 999;
-    }
-    row.inactive = daysSince >= 3;
+    row.inactive = studentStatsFromRecords(row.name).daysSince >= 3;
     return row;
   });
-
   const search = (document.getElementById("dashSearch").value || "").trim();
   const filtered = search ? rows.filter(r => r.name.includes(search)) : rows;
-
   filtered.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ar"));
   return filtered;
 }
@@ -699,59 +1014,239 @@ function buildLeaderboardRows() {
 function renderLeaderboard() {
   const wrap = document.getElementById("leaderboardWrap");
   const rows = buildLeaderboardRows();
-  if (!rows.length) {
-    wrap.innerHTML = `<div class="empty-note">لا توجد بيانات لعرضها</div>`;
-    return;
-  }
-  let html = `<table class="leaderboard"><thead><tr>
-    <th>#</th><th>الاسم</th><th>📖</th><th>📜</th><th>✍️</th><th>المجموع</th>
-  </tr></thead><tbody>`;
+  if (!rows.length) { wrap.innerHTML = `<div class="empty-note">لا توجد بيانات لعرضها</div>`; return; }
+  let html = `<table class="leaderboard"><thead><tr><th>#</th><th>الاسم</th><th>📖</th><th>📜</th><th>✍️</th><th>المجموع</th></tr></thead><tbody>`;
   rows.forEach((r, i) => {
     html += `<tr class="${r.inactive ? "alert" : ""}">
       <td><span class="rank-badge">${i + 1}</span></td>
       <td><span class="name-tag">${escapeHtml(r.name)}</span>${r.inactive ? `<div class="alert-flag">⚠️ لم يُنجز منذ 3 أيام+</div>` : ""}</td>
-      <td>${r.wird}</td><td>${r.tuhfa}</td><td>${r.irab}</td>
-      <td><strong>${r.score}</strong></td>
+      <td>${r.wird}</td><td>${r.tuhfa}</td><td>${r.irab}</td><td><strong>${r.score}</strong></td>
     </tr>`;
   });
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 }
 
-function renderChart() {
-  const recs = filteredRecordsForPeriod();
-  const total = recs.length || 1;
-  const stats = TASKS.map(t => {
-    const count = recs.filter(r => r[t.key]).length;
-    return { label: t.label, pct: Math.round((count / total) * 100) };
-  });
-  const holder = document.getElementById("chartBars");
-  holder.innerHTML = stats.map(s => `
-    <div class="chart-col">
-      <div class="chart-pct">${s.pct}%</div>
-      <div class="chart-bar" style="height:${Math.max(6, s.pct)}%"></div>
-      <div class="chart-label">${s.label}</div>
-    </div>
-  `).join("");
-}
-
 function exportCsv() {
   const rows = buildLeaderboardRows();
   const header = ["الاسم", "الورد", "تحفة الأطفال", "الإعراب", "المجموع"];
   const lines = [header.join(",")];
-  rows.forEach(r => {
-    lines.push([r.name, r.wird, r.tuhfa, r.irab, r.score].join(","));
-  });
-  const csv = "\uFEFF" + lines.join("\n"); // BOM لدعم العربية في Excel
+  rows.forEach(r => lines.push([r.name, r.wird, r.tuhfa, r.irab, r.score].join(",")));
+  const csv = "\uFEFF" + lines.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = `تقرير_${Teacher.period}_${todayStr()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.href = url; a.download = `تقرير_${Teacher.period}_${todayStr()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+
+function exportPdf() {
+  const rows = buildLeaderboardRows();
+  const win = window.open("", "_blank");
+  if (!win) { showToast("⚠️ يرجى السماح بالنوافذ المنبثقة لتصدير PDF"); return; }
+  const periodLabel = { today: "اليوم", week: "الأسبوع", all: "كل الفترة" }[Teacher.period];
+  win.document.write(`
+    <html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>لوحة الصدارة</title>
+    <style>
+      body{font-family:sans-serif;padding:24px;}
+      h1{font-size:1.2rem;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+      th,td{border:1px solid #ccc;padding:8px;text-align:right;font-size:.9rem;}
+      th{background:#f0f0f0;}
+    </style></head><body>
+    <h1>🏆 لوحة الصدارة — ${periodLabel} (${todayStr()})</h1>
+    <table><thead><tr><th>#</th><th>الاسم</th><th>القرآن</th><th>تحفة الأطفال</th><th>النحو</th><th>المجموع</th></tr></thead><tbody>
+    ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}</td><td>${r.wird}</td><td>${r.tuhfa}</td><td>${r.irab}</td><td>${r.score}</td></tr>`).join("")}
+    </tbody></table></body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
+/* ---- تبويب: الإحصائيات ---- */
+function renderAnalytics() {
+  const recs = filteredRecordsForPeriod();
+  const total = recs.length || 1;
+  const stats = TASKS.map(t => ({ label: t.label, pct: Math.round((recs.filter(r => r[t.key]).length / total) * 100) }));
+  document.getElementById("chartBars").innerHTML = stats.map(s => `
+    <div class="chart-col"><div class="chart-pct">${s.pct}%</div><div class="chart-bar" style="height:${Math.max(6, s.pct)}%"></div><div class="chart-label">${s.label}</div></div>
+  `).join("");
+
+  // توزيع إنجاز اليوم (Pie)
+  const today = todayStr();
+  const buckets = { 3: 0, 2: 0, 1: 0, 0: 0 };
+  Teacher.students.forEach(name => {
+    const rec = Teacher.records.find(r => r.studentName === name && r.date === today);
+    const c = rec ? [rec.wird, rec.tuhfa, rec.irab].filter(Boolean).length : 0;
+    buckets[c]++;
+  });
+  document.getElementById("pieChart").innerHTML = pieChartHtml([
+    { label: "3/3", value: buckets[3], color: "var(--green)" },
+    { label: "2/3", value: buckets[2], color: "var(--purple)" },
+    { label: "1/3", value: buckets[1], color: "var(--orange)" },
+    { label: "0/3", value: buckets[0], color: "var(--coral)" },
+  ]);
+
+  // تطور الإنجاز عبر آخر 10 أيام
+  const days = []; for (let i = 9; i >= 0; i--) days.push(dateStrDaysAgo(i));
+  const totalStudents = Teacher.students.length || 1;
+  const trend = days.map(d => {
+    const dayRecs = Teacher.records.filter(r => r.date === d);
+    const done = dayRecs.reduce((sum, r) => sum + [r.wird, r.tuhfa, r.irab].filter(Boolean).length, 0);
+    return Math.round((done / (totalStudents * 3)) * 100);
+  });
+  document.getElementById("lineChart").innerHTML = sparklineSvg(trend, days);
+
+  // نسبة الإنجاز حسب التلميذ
+  const hbarHtml = Teacher.students.map(name => {
+    const st = studentStatsFromRecords(name);
+    return `<div class="hbar-row"><div class="hbar-name">${escapeHtml(name)}</div><div class="hbar-track"><div class="hbar-fill" style="width:${st.completion}%"></div></div><div class="hbar-pct">${st.completion}%</div></div>`;
+  }).join("");
+  document.getElementById("hbarChart").innerHTML = hbarHtml || `<div class="empty-note">لا توجد بيانات</div>`;
+}
+
+function pieChartHtml(segments) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  let offset = 0;
+  const r = 45, circ = 2 * Math.PI * r;
+  const circles = segments.map(seg => {
+    const frac = seg.value / total;
+    const dash = frac * circ;
+    const circle = `<circle r="${r}" cx="60" cy="60" fill="transparent" stroke="${seg.color}" stroke-width="20" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}"></circle>`;
+    offset += dash;
+    return circle;
+  }).join("");
+  const legend = segments.map(seg => `<span><i style="background:${seg.color}"></i>${seg.label}: ${seg.value}</span>`).join("");
+  return `<div class="pie-wrap"><svg width="120" height="120" viewBox="0 0 120 120" style="transform:rotate(-90deg)">${circles}</svg><div class="pie-legend">${legend}</div></div>`;
+}
+
+function sparklineSvg(values, labels) {
+  if (!values.length) return `<div class="empty-note">لا توجد بيانات كافية</div>`;
+  const w = 300, h = 120, pad = 10;
+  const max = Math.max(100, ...values), min = 0;
+  const step = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0;
+  const points = values.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  const dots = values.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2);
+    return `<circle cx="${x}" cy="${y}" r="3" fill="#2C86B8"></circle>`;
+  }).join("");
+  return `<svg class="line-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${points}" fill="none" stroke="#4FB6E8" stroke-width="2.5"></polyline>${dots}
+  </svg>`;
+}
+
+/* ---- تبويب: الأوسمة (عرض شامل) ---- */
+function renderAllBadgesTab() {
+  let html = "";
+  Object.entries(BADGE_DEFS).forEach(([key, defs]) => {
+    html += `<div class="badges-group"><div class="badges-group-title">${GROUP_LABELS[key]}</div><div class="badges-grid">`;
+    defs.forEach(d => { html += `<div class="badge-item"><div class="b-emoji">${d.e}</div><div class="b-name">${escapeHtml(d.n)} (${d.t})</div></div>`; });
+    html += `</div></div>`;
+  });
+  html += `<div class="badges-group"><div class="badges-group-title">🔒 أوسمة سرية (شروطها غير معروضة للطفل)</div><div class="badges-grid">`;
+  SECRET_BADGES.forEach(n => { html += `<div class="badge-item secret"><div class="b-emoji">🔒</div><div class="b-name">${escapeHtml(n)}</div></div>`; });
+  html += `</div></div>`;
+  document.getElementById("allBadgesList").innerHTML = html;
+}
+
+/* ---- تبويب: إدارة الواجبات (محلي) ---- */
+function addAssignment() {
+  const title = document.getElementById("asgTitle").value.trim();
+  const subject = document.getElementById("asgSubject").value;
+  const desc = document.getElementById("asgDesc").value.trim();
+  const date = document.getElementById("asgDate").value || todayStr();
+  if (!title) { showToast("⚠️ أدخل عنوان الواجب"); return; }
+  const list = lsGet(LS_ASSIGNMENTS, []);
+  list.push({ id: Date.now(), title, subject, desc, date });
+  lsSet(LS_ASSIGNMENTS, list);
+  document.getElementById("asgTitle").value = "";
+  document.getElementById("asgDesc").value = "";
+  renderAssignmentsList();
+  showToast("✅ تمت إضافة الواجب");
+}
+function deleteAssignment(id) {
+  lsSet(LS_ASSIGNMENTS, lsGet(LS_ASSIGNMENTS, []).filter(a => a.id !== id));
+  renderAssignmentsList();
+}
+function renderAssignmentsList() {
+  const list = lsGet(LS_ASSIGNMENTS, []).sort((a, b) => b.date.localeCompare(a.date));
+  const subjectLabel = { quran: "📖 القرآن الكريم", tuhfa: "📜 تحفة الأطفال", nahw: "✍️ النحو" };
+  const wrap = document.getElementById("assignmentsList");
+  if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا توجد واجبات مسجّلة بعد</div>`; return; }
+  wrap.innerHTML = list.map(a => `
+    <div class="list-item">
+      <div class="list-item-info">
+        <div class="list-item-title">${escapeHtml(a.title)}</div>
+        <div class="list-item-sub">${subjectLabel[a.subject] || ""} · ${a.date}${a.desc ? " · " + escapeHtml(a.desc) : ""}</div>
+      </div>
+      <button class="icon-btn danger" data-del="${a.id}">🗑️</button>
+    </div>`).join("");
+  wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteAssignment(Number(btn.dataset.del))));
+}
+
+/* ---- تبويب: البرنامج الأسبوعي (محلي) ---- */
+function addScheduleItem() {
+  const day = document.getElementById("schDay").value;
+  const lesson = document.getElementById("schLesson").value.trim();
+  const time = document.getElementById("schTime").value;
+  if (!lesson) { showToast("⚠️ أدخل الدرس"); return; }
+  const list = lsGet(LS_SCHEDULE, []);
+  list.push({ id: Date.now(), day, lesson, time });
+  lsSet(LS_SCHEDULE, list);
+  document.getElementById("schLesson").value = "";
+  renderScheduleList();
+  showToast("✅ تمت الإضافة إلى البرنامج");
+}
+function deleteScheduleItem(id) {
+  lsSet(LS_SCHEDULE, lsGet(LS_SCHEDULE, []).filter(s => s.id !== id));
+  renderScheduleList();
+}
+function renderScheduleList() {
+  const list = lsGet(LS_SCHEDULE, []);
+  const wrap = document.getElementById("scheduleList");
+  if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا يوجد برنامج مسجّل بعد</div>`; return; }
+  wrap.innerHTML = list.map(s => `
+    <div class="list-item">
+      <div class="list-item-info">
+        <div class="list-item-title">${escapeHtml(s.day)} — ${escapeHtml(s.lesson)}</div>
+        <div class="list-item-sub">${s.time ? "⏰ " + s.time : ""}</div>
+      </div>
+      <button class="icon-btn danger" data-del="${s.id}">🗑️</button>
+    </div>`).join("");
+  wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteScheduleItem(Number(btn.dataset.del))));
+}
+
+/* ---- تبويب: الحضور والغياب (محلي) ---- */
+function setAttendance(date, name, status) {
+  const all = lsGet(LS_ATTENDANCE, {});
+  if (!all[date]) all[date] = {};
+  all[date][name] = status;
+  lsSet(LS_ATTENDANCE, all);
+  renderAttendance();
+}
+function renderAttendance() {
+  const date = document.getElementById("attDate").value || todayStr();
+  const all = lsGet(LS_ATTENDANCE, {});
+  const dayData = all[date] || {};
+  const wrap = document.getElementById("attendanceList");
+  if (!Teacher.students.length) { wrap.innerHTML = `<div class="empty-note">لا توجد بيانات تلاميذ بعد</div>`; return; }
+  wrap.innerHTML = Teacher.students.map(name => {
+    const st = dayData[name] || "";
+    return `<div class="att-row">
+      <span class="att-name">${escapeHtml(name)}</span>
+      <div class="att-opts">
+        <button class="att-opt ${st === "present" ? "sel-present" : ""}" data-name="${escapeHtml(name)}" data-status="present">🟢 حاضر</button>
+        <button class="att-opt ${st === "absent" ? "sel-absent" : ""}" data-name="${escapeHtml(name)}" data-status="absent">🔴 غائب</button>
+        <button class="att-opt ${st === "late" ? "sel-late" : ""}" data-name="${escapeHtml(name)}" data-status="late">🟡 متأخر</button>
+      </div>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll(".att-opt").forEach(btn => btn.addEventListener("click", () => setAttendance(date, btn.dataset.name, btn.dataset.status)));
 }
 
 /* ================== 11) بدء التشغيل ================== */
@@ -759,8 +1254,6 @@ function exportCsv() {
 document.addEventListener("DOMContentLoaded", () => {
   initWelcomeScreen();
   initTeacherUI();
-  document.getElementById("celebrationCloseBtn").addEventListener("click", () => {
-    document.getElementById("celebrationOverlay").classList.add("hidden");
-  });
+  document.getElementById("celebrationCloseBtn").addEventListener("click", () => document.getElementById("celebrationOverlay").classList.add("hidden"));
   flushQueue();
 });
