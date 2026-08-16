@@ -1,15 +1,15 @@
 /* =========================================================================
    رفقاء القرآن والنحو — script.js
    منطق الصفحات الثلاث: الرئيسية، التلميذ، الأستاذ.
-   البيانات الحيّة (الأسماء/الإنجاز اليومي/السجل التاريخي) تأتي من الـ Backend
-   (Google Apps Script)، بينما إدارة الواجبات/البرنامج/الحضور تُحفظ محليًا
-   في هذا الإصدار (localStorage) لحين ربطها بالـ Backend لاحقًا.
+   البيانات الحيّة (الأسماء/الإنجاز اليومي/السجل التاريخي) تأتي من Supabase
+   (PostgreSQL عبر REST API)، بينما إدارة الواجبات/البرنامج/الحضور تُحفظ
+   محليًا في هذا الإصدار (localStorage) لحين ربطها بالخادم لاحقًا.
    ========================================================================= */
 
 /* ================== 1) الإعدادات ================== */
 const CONFIG = {
-  WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyNPAeTY2nubR2C1v6kVQU65TSlaBa-3WUjnun_T_hOY2XlY7GABXgoq3bhI8AnNI-kHw/exec",
-  CLASS_CODE: "Anasjlab",
+  SUPABASE_URL: "sb_publishable_tqKlsdOifnd3WhFcgnoazg_qSMoMrSf", // مثال: https://xxxxxxxx.supabase.co
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnamVidWJucmZva2VzemxhdGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxMzksImV4cCI6MjEwMjQ2MDEzOX0.6sujYqlPQX5o5SSrrz-Yx0TqVTdieVgButW5JCinZRY",
   TEACHER_PASSWORD_HASH: "6fba5c6e010bdde8084a8326d2151f9e8b130823316d39de651e18ae8933ebd2",
   HISTORY_DAYS: 370, // نطاق كافٍ لحساب النقاط التراكمية والأوسمة بشكل صحيح
   SYNC_RETRY_INTERVAL_MS: 20000,
@@ -136,28 +136,73 @@ function rankForPoints(points) {
   return RANKS.find(r => points >= r.min && points <= r.max) || RANKS[0];
 }
 
-/* ================== 3) طبقة الاتصال بالـ Backend ================== */
+/* ================== 3) طبقة الاتصال بـ Supabase ==================
+   نستعمل واجهة PostgREST المدمجة في Supabase مباشرة عبر fetch، دون أي
+   مكتبة إضافية. القراءة (SELECT) تُستعمل للأسماء/الإنجاز اليومي/السجل
+   التاريخي، بينما التأكيد يمرّ عبر دالة RPC واحدة (confirm_assignments)
+   تُنفَّذ بأمان وذرّية داخل قاعدة البيانات (تمنع التأكيد المزدوج).
+   ========================================================================= */
 
-async function apiGet(action, params = {}) {
-  const url = new URL(CONFIG.WEB_APP_URL);
-  url.searchParams.set("action", action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString(), { method: "GET" });
-  if (!res.ok) throw new Error("network");
+function sbHeaders(extra = {}) {
+  return {
+    apikey: CONFIG.SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+    ...extra,
+  };
+}
+
+async function sbSelect(pathAndQuery) {
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    method: "GET",
+    headers: sbHeaders(),
+  });
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
+  if (!res.ok) throw new Error((data && data.message) || "network");
+  return data; // مصفوفة صفوف دائمًا
+}
+
+async function sbRpc(fnName, params) {
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+    method: "POST",
+    headers: sbHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.message) || "network");
   return data;
 }
-async function apiPost(payload) {
-  const res = await fetch(CONFIG.WEB_APP_URL, {
+
+async function sbInsert(table, obj) {
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
+    headers: sbHeaders({ "Content-Type": "application/json", Prefer: "return=representation" }),
+    body: JSON.stringify(obj),
   });
-  if (!res.ok) throw new Error("network");
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
+  if (!res.ok) throw new Error((data && data.message) || "network");
   return data;
+}
+
+async function sbUpsert(table, obj, conflictCols) {
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictCols}`, {
+    method: "POST",
+    headers: sbHeaders({ "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=representation" }),
+    body: JSON.stringify(obj),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.message) || "network");
+  return data;
+}
+
+async function sbDelete(pathAndQuery) {
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    method: "DELETE",
+    headers: sbHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data && data.message) || "network");
+  }
 }
 
 /* ================== 4) قائمة الانتظار المحلية ================== */
@@ -174,9 +219,14 @@ async function flushQueue() {
   const remaining = [];
   for (const item of q) {
     try {
-      const { __confirm, ...rest } = item;
-      const action = __confirm ? "confirmAssignments" : "updateTask";
-      await apiPost({ action, classCode: CONFIG.CLASS_CODE, ...rest });
+      // كل عناصر قائمة الانتظار في هذا الإصدار هي طلبات تأكيد مؤجَّلة فقط
+      await sbRpc("confirm_assignments", {
+        p_student: item.studentName,
+        p_date: item.date,
+        p_wird: !!item.wird,
+        p_tuhfa: !!item.tuhfa,
+        p_irab: !!item.irab,
+      });
     } catch (e) { remaining.push(item); }
   }
   writeQueue(remaining);
@@ -338,8 +388,8 @@ async function loadNamesList() {
   setScreen("screen-loading");
   try {
     if (!navigator.onLine) throw { offline: true };
-    const data = await apiGet("getNames");
-    const names = data.names || [];
+    const rows = await sbSelect("students?select=name&order=name.asc");
+    const names = rows.map(r => r.name);
     if (!names.length) {
       setScreen("screen-error-empty");
       Mascot.confused();
@@ -400,14 +450,21 @@ function setLocalTodayCache(name, todayObj, confirmed) {
 }
 
 async function loadTodayState() {
-  const data = await apiGet("getToday", { student: State.student });
-  State.today = { wird: !!data.wird, tuhfa: !!data.tuhfa, irab: !!data.irab };
-  State.confirmed = !!data.confirmed;
+  const today = todayStr();
+  const rows = await sbSelect(
+    `records?student_name=eq.${encodeURIComponent(State.student)}&date=eq.${today}&select=wird,tuhfa,irab,confirmed`
+  );
+  const row = rows[0];
+  State.today = { wird: !!(row && row.wird), tuhfa: !!(row && row.tuhfa), irab: !!(row && row.irab) };
+  State.confirmed = !!(row && row.confirmed);
   setLocalTodayCache(State.student, State.today, State.confirmed);
 }
 async function loadHistoryState() {
-  const data = await apiGet("getHistory", { student: State.student, days: CONFIG.HISTORY_DAYS });
-  State.history = data.history || [];
+  const cutoff = dateStrDaysAgo(CONFIG.HISTORY_DAYS - 1);
+  const rows = await sbSelect(
+    `records?student_name=eq.${encodeURIComponent(State.student)}&date=gte.${cutoff}&select=date,wird,tuhfa,irab&order=date.asc`
+  );
+  State.history = rows.map(r => ({ date: r.date, wird: !!r.wird, tuhfa: !!r.tuhfa, irab: !!r.irab }));
   computeStreak();
 }
 
@@ -661,23 +718,28 @@ async function onConfirmAssignments() {
 
   const payload = {
     studentName: State.student, wird: State.today.wird, tuhfa: State.today.tuhfa,
-    irab: State.today.irab, date: todayStr(), clientTimestamp: new Date().toISOString(),
+    irab: State.today.irab, date: todayStr(),
   };
 
   try {
     if (!navigator.onLine) throw new Error("offline");
-    const res = await apiPost({ action: "confirmAssignments", classCode: CONFIG.CLASS_CODE, ...payload });
+    const res = await sbRpc("confirm_assignments", {
+      p_student: payload.studentName, p_date: payload.date,
+      p_wird: payload.wird, p_tuhfa: payload.tuhfa, p_irab: payload.irab,
+    });
     if (res && res.alreadyConfirmed) {
       State.confirmed = true;
       setLocalTodayCache(State.student, State.today, true);
       computeTotals();
       renderTasksScreen();
       showToast("لقد قمت بتسجيل واجباتك مسبقًا اليوم ✅");
+    } else if (res && res.success === false) {
+      showToast("⚠️ تعذّر الحفظ: " + (res.message || "خطأ غير معروف"));
     } else {
       handleConfirmSuccess(false);
     }
   } catch (e) {
-    enqueueUpdate({ ...payload, __confirm: true });
+    enqueueUpdate(payload);
     handleConfirmSuccess(true);
     showToast("💾 لا يوجد اتصال، سيتم إرسال تأكيدك تلقائيًا عند عودة الاتصال");
   } finally {
@@ -755,12 +817,6 @@ const Teacher = {
 };
 
 /* ---- تخزين محلي لإدارة الواجبات/البرنامج/الحضور (لحين ربطها بالخادم) ---- */
-const LS_ASSIGNMENTS = "rq_teacher_assignments";
-const LS_SCHEDULE = "rq_teacher_schedule";
-const LS_ATTENDANCE = "rq_teacher_attendance";
-function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
-function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-
 function initTeacherUI() {
   document.getElementById("teacherBtn").addEventListener("click", openTeacherLogin);
   document.getElementById("teacherCancelBtn").addEventListener("click", closeTeacherLogin);
@@ -849,9 +905,12 @@ async function openTeacherDashboard() {
   document.getElementById("teacherDashboard").classList.remove("hidden");
   document.getElementById("dashDate").textContent = new Intl.DateTimeFormat("ar-MA", { weekday: "long", year: "numeric", month: "long", day: "numeric" }).format(new Date());
   try {
-    const data = await apiGet("getRecords", { classCode: CONFIG.CLASS_CODE });
-    Teacher.records = data.records || [];
-    Teacher.students = data.students || [];
+    const [studentRows, recordRows] = await Promise.all([
+      sbSelect("students?select=name&order=name.asc"),
+      sbSelect("records?select=student_name,date,wird,tuhfa,irab&order=date.asc"),
+    ]);
+    Teacher.students = studentRows.map(r => r.name);
+    Teacher.records = recordRows.map(r => ({ studentName: r.student_name, date: r.date, wird: !!r.wird, tuhfa: !!r.tuhfa, irab: !!r.irab }));
     switchTab("overview");
   } catch (e) {
     document.getElementById("overviewCards").innerHTML = `<div class="empty-note">تعذّر جلب البيانات، تحقق من الاتصال</div>`;
@@ -890,15 +949,22 @@ function studentStatsFromRecords(name) {
 }
 
 /* ---- تبويب: لوحة التحكم (Overview) ---- */
-function renderOverview() {
+async function renderOverview() {
   const today = todayStr();
   const total = Teacher.students.length;
   const completedToday = Teacher.students.filter(s => Teacher.records.some(r => r.studentName === s && r.date === today && (r.wird || r.tuhfa || r.irab))).length;
   const streakHolders = Teacher.students.filter(s => studentStatsFromRecords(s).streak >= 1).length;
   const needAttention = Teacher.students.filter(s => studentStatsFromRecords(s).daysSince >= 3);
 
-  const attToday = lsGet(LS_ATTENDANCE, {})[today] || null;
-  const presentCount = attToday ? Object.values(attToday).filter(v => v === "present").length : null;
+  let attToday = null, presentCount = null;
+  try {
+    const rows = await sbSelect(`attendance?date=eq.${today}&select=student_name,status`);
+    if (rows.length) {
+      attToday = {};
+      rows.forEach(r => { attToday[r.student_name] = r.status; });
+      presentCount = rows.filter(r => r.status === "present").length;
+    }
+  } catch (e) { /* نتجاهل الخطأ هنا فقط، البطاقة تظهر "لم يُسجَّل بعد" */ }
 
   const cards = [
     { emoji: "👥", value: total, label: "التلاميذ" },
@@ -1154,87 +1220,114 @@ function renderAllBadgesTab() {
   document.getElementById("allBadgesList").innerHTML = html;
 }
 
-/* ---- تبويب: إدارة الواجبات (محلي) ---- */
-function addAssignment() {
+/* ---- تبويب: إدارة الواجبات (Supabase) ---- */
+async function addAssignment() {
   const title = document.getElementById("asgTitle").value.trim();
   const subject = document.getElementById("asgSubject").value;
   const desc = document.getElementById("asgDesc").value.trim();
   const date = document.getElementById("asgDate").value || todayStr();
   if (!title) { showToast("⚠️ أدخل عنوان الواجب"); return; }
-  const list = lsGet(LS_ASSIGNMENTS, []);
-  list.push({ id: Date.now(), title, subject, desc, date });
-  lsSet(LS_ASSIGNMENTS, list);
-  document.getElementById("asgTitle").value = "";
-  document.getElementById("asgDesc").value = "";
-  renderAssignmentsList();
-  showToast("✅ تمت إضافة الواجب");
+  try {
+    await sbInsert("assignments", { title, subject, description: desc || null, date });
+    document.getElementById("asgTitle").value = "";
+    document.getElementById("asgDesc").value = "";
+    showToast("✅ تمت إضافة الواجب");
+    renderAssignmentsList();
+  } catch (e) {
+    showToast("⚠️ تعذّرت الإضافة، تحقق من الاتصال");
+  }
 }
-function deleteAssignment(id) {
-  lsSet(LS_ASSIGNMENTS, lsGet(LS_ASSIGNMENTS, []).filter(a => a.id !== id));
-  renderAssignmentsList();
+async function deleteAssignment(id) {
+  try {
+    await sbDelete(`assignments?id=eq.${id}`);
+    renderAssignmentsList();
+  } catch (e) {
+    showToast("⚠️ تعذّر الحذف");
+  }
 }
-function renderAssignmentsList() {
-  const list = lsGet(LS_ASSIGNMENTS, []).sort((a, b) => b.date.localeCompare(a.date));
-  const subjectLabel = { quran: "📖 القرآن الكريم", tuhfa: "📜 تحفة الأطفال", nahw: "✍️ النحو" };
+async function renderAssignmentsList() {
   const wrap = document.getElementById("assignmentsList");
-  if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا توجد واجبات مسجّلة بعد</div>`; return; }
-  wrap.innerHTML = list.map(a => `
-    <div class="list-item">
-      <div class="list-item-info">
-        <div class="list-item-title">${escapeHtml(a.title)}</div>
-        <div class="list-item-sub">${subjectLabel[a.subject] || ""} · ${a.date}${a.desc ? " · " + escapeHtml(a.desc) : ""}</div>
-      </div>
-      <button class="icon-btn danger" data-del="${a.id}">🗑️</button>
-    </div>`).join("");
-  wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteAssignment(Number(btn.dataset.del))));
+  const subjectLabel = { quran: "📖 القرآن الكريم", tuhfa: "📜 تحفة الأطفال", nahw: "✍️ النحو" };
+  try {
+    const list = await sbSelect("assignments?select=*&order=date.desc");
+    if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا توجد واجبات مسجّلة بعد</div>`; return; }
+    wrap.innerHTML = list.map(a => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-title">${escapeHtml(a.title)}</div>
+          <div class="list-item-sub">${subjectLabel[a.subject] || ""} · ${a.date}${a.description ? " · " + escapeHtml(a.description) : ""}</div>
+        </div>
+        <button class="icon-btn danger" data-del="${a.id}">🗑️</button>
+      </div>`).join("");
+    wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteAssignment(Number(btn.dataset.del))));
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty-note">تعذّر جلب الواجبات، تحقق من الاتصال</div>`;
+  }
 }
 
-/* ---- تبويب: البرنامج الأسبوعي (محلي) ---- */
-function addScheduleItem() {
+/* ---- تبويب: البرنامج الأسبوعي (Supabase) ---- */
+async function addScheduleItem() {
   const day = document.getElementById("schDay").value;
   const lesson = document.getElementById("schLesson").value.trim();
   const time = document.getElementById("schTime").value;
   if (!lesson) { showToast("⚠️ أدخل الدرس"); return; }
-  const list = lsGet(LS_SCHEDULE, []);
-  list.push({ id: Date.now(), day, lesson, time });
-  lsSet(LS_SCHEDULE, list);
-  document.getElementById("schLesson").value = "";
-  renderScheduleList();
-  showToast("✅ تمت الإضافة إلى البرنامج");
+  try {
+    await sbInsert("schedule_items", { day, lesson, start_time: time || null });
+    document.getElementById("schLesson").value = "";
+    showToast("✅ تمت الإضافة إلى البرنامج");
+    renderScheduleList();
+  } catch (e) {
+    showToast("⚠️ تعذّرت الإضافة، تحقق من الاتصال");
+  }
 }
-function deleteScheduleItem(id) {
-  lsSet(LS_SCHEDULE, lsGet(LS_SCHEDULE, []).filter(s => s.id !== id));
-  renderScheduleList();
+async function deleteScheduleItem(id) {
+  try {
+    await sbDelete(`schedule_items?id=eq.${id}`);
+    renderScheduleList();
+  } catch (e) {
+    showToast("⚠️ تعذّر الحذف");
+  }
 }
-function renderScheduleList() {
-  const list = lsGet(LS_SCHEDULE, []);
+async function renderScheduleList() {
   const wrap = document.getElementById("scheduleList");
-  if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا يوجد برنامج مسجّل بعد</div>`; return; }
-  wrap.innerHTML = list.map(s => `
-    <div class="list-item">
-      <div class="list-item-info">
-        <div class="list-item-title">${escapeHtml(s.day)} — ${escapeHtml(s.lesson)}</div>
-        <div class="list-item-sub">${s.time ? "⏰ " + s.time : ""}</div>
-      </div>
-      <button class="icon-btn danger" data-del="${s.id}">🗑️</button>
-    </div>`).join("");
-  wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteScheduleItem(Number(btn.dataset.del))));
+  try {
+    const list = await sbSelect("schedule_items?select=*&order=id.asc");
+    if (!list.length) { wrap.innerHTML = `<div class="empty-note">لا يوجد برنامج مسجّل بعد</div>`; return; }
+    wrap.innerHTML = list.map(s => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-title">${escapeHtml(s.day)} — ${escapeHtml(s.lesson)}</div>
+          <div class="list-item-sub">${s.start_time ? "⏰ " + escapeHtml(s.start_time) : ""}</div>
+        </div>
+        <button class="icon-btn danger" data-del="${s.id}">🗑️</button>
+      </div>`).join("");
+    wrap.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => deleteScheduleItem(Number(btn.dataset.del))));
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty-note">تعذّر جلب البرنامج، تحقق من الاتصال</div>`;
+  }
 }
 
-/* ---- تبويب: الحضور والغياب (محلي) ---- */
-function setAttendance(date, name, status) {
-  const all = lsGet(LS_ATTENDANCE, {});
-  if (!all[date]) all[date] = {};
-  all[date][name] = status;
-  lsSet(LS_ATTENDANCE, all);
-  renderAttendance();
+/* ---- تبويب: الحضور والغياب (Supabase) ---- */
+async function setAttendance(date, name, status) {
+  try {
+    await sbUpsert("attendance", { date, student_name: name, status, updated_at: new Date().toISOString() }, "date,student_name");
+    renderAttendance();
+  } catch (e) {
+    showToast("⚠️ تعذّر حفظ الحضور، تحقق من الاتصال");
+  }
 }
-function renderAttendance() {
+async function renderAttendance() {
   const date = document.getElementById("attDate").value || todayStr();
-  const all = lsGet(LS_ATTENDANCE, {});
-  const dayData = all[date] || {};
   const wrap = document.getElementById("attendanceList");
   if (!Teacher.students.length) { wrap.innerHTML = `<div class="empty-note">لا توجد بيانات تلاميذ بعد</div>`; return; }
+  let dayData = {};
+  try {
+    const rows = await sbSelect(`attendance?date=eq.${date}&select=student_name,status`);
+    rows.forEach(r => { dayData[r.student_name] = r.status; });
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty-note">تعذّر جلب الحضور، تحقق من الاتصال</div>`;
+    return;
+  }
   wrap.innerHTML = Teacher.students.map(name => {
     const st = dayData[name] || "";
     return `<div class="att-row">
